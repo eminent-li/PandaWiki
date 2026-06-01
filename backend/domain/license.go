@@ -9,7 +9,7 @@ const ContextKeyEditionLimitation contextKey = "edition_limitation"
 
 type BaseEditionLimitation struct {
 	MaxKb                  int   `json:"max_kb"`                     // 知识库站点数量
-	MaxNode                int   `json:"max_node"`                   // 单个知识库下文档数量
+	MaxNode                int   `json:"max_node"`                   // 单个知识库下节点数量，0 表示不限
 	MaxSSOUser             int   `json:"max_sso_users"`              // SSO认证用户数量
 	MaxAdmin               int64 `json:"max_admin"`                  // 后台管理员数量
 	AllowAdminPerm         bool  `json:"allow_admin_perm"`           // 支持管理员分权控制
@@ -26,7 +26,7 @@ type BaseEditionLimitation struct {
 var baseEditionLimitationDefault = BaseEditionLimitation{
 	MaxKb:    1,
 	MaxAdmin: 1,
-	MaxNode:  300,
+	MaxNode:  0,
 }
 
 func GetBaseEditionLimitation(c context.Context) BaseEditionLimitation {
