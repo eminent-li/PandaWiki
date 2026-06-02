@@ -243,7 +243,9 @@ const ListRenderItem = ({
           p: 0,
           ':hover': {
             bgcolor:
-              data.status.includes('error') || data.status === 'imported'
+              data.status.includes('error') ||
+              data.status === 'imported' ||
+              data.status === 'import-skipped'
                 ? 'transparent'
                 : 'background.paper3',
           },

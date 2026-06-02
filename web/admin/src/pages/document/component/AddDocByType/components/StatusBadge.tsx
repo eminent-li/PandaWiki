@@ -48,6 +48,12 @@ const StatusBadge = ({ status }: StatusBadgeProps) => {
       bgColor: 'error.main',
       loading: false,
     },
+    'import-skipped': {
+      text: '冲突已跳过',
+      color: theme.palette.warning.dark,
+      bgColor: alpha(theme.palette.warning.main, 0.18),
+      loading: false,
+    },
     imported: {
       text: '导入成功',
       color: 'white',

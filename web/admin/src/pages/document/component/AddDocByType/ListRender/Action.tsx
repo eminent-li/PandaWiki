@@ -1,9 +1,11 @@
 import {
   ConstsCrawlerSource,
   ConstsCrawlerStatus,
+  DomainNodeListItemResp,
   postApiV1CrawlerExport,
   postApiV1CrawlerParse,
   postApiV1FileUpload,
+  getApiV1NodeList,
   postApiV1Node,
 } from '@/request';
 import { useAppSelector } from '@/store';
@@ -34,6 +36,105 @@ interface BatchActionBarProps {
   queue: ReturnType<typeof useGlobalQueue>;
 }
 
+const normalizeDocName = (title?: string) => title?.trim().toLowerCase() || '';
+
+const buildItemDepthMap = (items: ListDataItem[]) => {
+  const itemMap = new Map(
+    items.filter(item => item.id).map(item => [item.id!, item] as const),
+  );
+  const depthCache = new Map<string, number>();
+
+  const getDepth = (item: ListDataItem): number => {
+    const cached = depthCache.get(item.uuid);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    let depth = 0;
+    let currentParentId = item.parent_id;
+    const visited = new Set<string>();
+    while (currentParentId && !visited.has(currentParentId)) {
+      visited.add(currentParentId);
+      const parent = itemMap.get(currentParentId);
+      if (!parent) {
+        break;
+      }
+      depth += 1;
+      currentParentId = parent.parent_id;
+    }
+
+    depthCache.set(item.uuid, depth);
+    return depth;
+  };
+
+  return getDepth;
+};
+
+const buildExistingPathHelpers = (nodes: DomainNodeListItemResp[]) => {
+  const nodeMap = new Map(
+    nodes.filter(node => node.id).map(node => [node.id!, node] as const),
+  );
+  const pathCache = new Map<string, string[]>();
+
+  const getPathSegmentsById = (id?: string): string[] => {
+    if (!id) {
+      return [];
+    }
+
+    const cached = pathCache.get(id);
+    if (cached) {
+      return cached;
+    }
+
+    const node = nodeMap.get(id);
+    if (!node) {
+      return [];
+    }
+
+    const parentSegments = getPathSegmentsById(node.parent_id);
+    const segments = [...parentSegments, node.name || ''];
+    pathCache.set(id, segments);
+    return segments;
+  };
+
+  const existingKeyMap = new Map<string, DomainNodeListItemResp>();
+  nodes.forEach(node => {
+    const segments = getPathSegmentsById(node.id).map(normalizeDocName);
+    const normalizedPath = segments.filter(Boolean).join('/');
+    if (!normalizedPath || !node.nav_id) {
+      return;
+    }
+    existingKeyMap.set(
+      `${node.nav_id}:${node.type}:${normalizedPath}`,
+      node,
+    );
+  });
+
+  return { existingKeyMap, getPathSegmentsById };
+};
+
+const downloadConflictCsv = (items: ListDataItem[]) => {
+  const rows = items.map(item => [
+    item.title || '',
+    item.target_path || '',
+    item.conflict_path || '',
+  ]);
+  const csv = [
+    '\uFEFF文件名,目标路径,已存在路径',
+    ...rows.map(row => row.map(value => `"${value.replace(/"/g, '""')}"`).join(',')),
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `kb-conflicts-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+};
+
 const BatchActionBar = (props: BatchActionBarProps) => {
   const theme = useTheme();
   const { kb_id, nav_id } = useAppSelector(state => state.config);
@@ -55,6 +156,7 @@ const BatchActionBar = (props: BatchActionBarProps) => {
   const {
     parseErrorCount,
     importErrorCount,
+    importSkippedCount,
     parsedCount,
     importedCount,
     loadingCount,
@@ -65,12 +167,19 @@ const BatchActionBar = (props: BatchActionBarProps) => {
       parsedCount: data.filter(item => item.status === 'parsed').length,
       importErrorCount: data.filter(item => item.status === 'import-error')
         .length,
+      importSkippedCount: data.filter(item => item.status === 'import-skipped')
+        .length,
       importedCount: data.filter(item => item.status === 'imported').length,
       loadingCount: data.filter(item =>
         ['parsing', 'importing'].includes(item.status),
       ).length,
     };
   }, [data]);
+
+  const skippedItems = useMemo(
+    () => data.filter(item => item.status === 'import-skipped'),
+    [data],
+  );
 
   /**
    * 通用解析函数 - 用于解析文档
@@ -167,6 +276,87 @@ const BatchActionBar = (props: BatchActionBarProps) => {
       return;
     }
 
+    const existingNodes = await getApiV1NodeList({ kb_id });
+    const { existingKeyMap, getPathSegmentsById } = buildExistingPathHelpers(
+      existingNodes || [],
+    );
+    const getItemDepth = buildItemDepthMap(itemsToImport);
+    const sortedItemsToImport = [...itemsToImport].sort((left, right) => {
+      const depthDiff = getItemDepth(left) - getItemDepth(right);
+      if (depthDiff !== 0) {
+        return depthDiff;
+      }
+      if (left.file === right.file) {
+        return 0;
+      }
+      return left.file ? 1 : -1;
+    });
+
+    const batchSeenKeys = new Set<string>();
+    const skippedConflictUuids = new Set<string>();
+    const sourceFolderPathMap = new Map<string, string[]>();
+    const sourceFolderResolvedParentMap = new Map<string, string>();
+
+    sortedItemsToImport.forEach(item => {
+      const parentSegments = item.parent_id
+        ? sourceFolderPathMap.get(item.parent_id) ||
+          getPathSegmentsById(item.parent_id)
+        : [];
+      const targetSegments = [...parentSegments, item.title || ''];
+      const normalizedPath = targetSegments.map(normalizeDocName).join('/');
+
+      item.target_path = targetSegments.join('/');
+
+      if (!normalizedPath || !nav_id) {
+        if (!item.file && item.id) {
+          sourceFolderPathMap.set(item.id, targetSegments);
+        }
+        return;
+      }
+
+      const itemType = item.file ? 2 : 1;
+      const pathKey = `${nav_id}:${itemType}:${normalizedPath}`;
+      const existingNode = existingKeyMap.get(pathKey);
+
+      if (existingNode || batchSeenKeys.has(pathKey)) {
+        skippedConflictUuids.add(item.uuid);
+        item.conflict_path = targetSegments.join('/');
+
+        if (!item.file && item.id && existingNode?.id) {
+          sourceFolderResolvedParentMap.set(item.id, existingNode.id);
+          sourceFolderPathMap.set(item.id, targetSegments);
+        }
+        return;
+      }
+
+      batchSeenKeys.add(pathKey);
+      if (!item.file && item.id) {
+        sourceFolderPathMap.set(item.id, targetSegments);
+      }
+    });
+
+    if (skippedConflictUuids.size > 0) {
+      setData(prev =>
+        prev.map(item =>
+          skippedConflictUuids.has(item.uuid)
+            ? {
+                ...item,
+                status: 'import-skipped',
+                summary: `知识库中已存在：${item.conflict_path || item.target_path || item.title || ''}`,
+              }
+            : item,
+        ),
+      );
+      itemsToImport = itemsToImport.filter(
+        item => !skippedConflictUuids.has(item.uuid),
+      );
+      message.warning(`已跳过 ${skippedConflictUuids.size} 个冲突项`);
+    }
+
+    if (itemsToImport.length === 0) {
+      return;
+    }
+
     const importingFolderIds = new Set(
       itemsToImport
         .filter(item => !item.file && item.id)
@@ -191,7 +381,9 @@ const BatchActionBar = (props: BatchActionBarProps) => {
         try {
           let actualParentId: string | undefined = undefined;
           if (item.parent_id) {
-            const mappedParentId = idMapping.get(item.parent_id);
+            const mappedParentId =
+              idMapping.get(item.parent_id) ||
+              sourceFolderResolvedParentMap.get(item.parent_id);
             if (mappedParentId) {
               actualParentId = mappedParentId;
             } else {
@@ -311,7 +503,38 @@ const BatchActionBar = (props: BatchActionBarProps) => {
         }
       });
     }
-  }, [data, setData, kb_id, isSupportSelect, checked, parent_id, queue]);
+  }, [data, setData, kb_id, nav_id, isSupportSelect, checked, parent_id, queue]);
+
+  const handleCopySkippedList = useCallback(async () => {
+    if (skippedItems.length === 0) {
+      message.warning('当前没有可复制的冲突清单');
+      return;
+    }
+
+    const text = skippedItems
+      .map(
+        item =>
+          `${item.title || ''}\t${item.target_path || ''}\t${item.conflict_path || ''}`,
+      )
+      .join('\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success('已复制冲突清单');
+    } catch {
+      message.error('复制失败，请检查浏览器权限');
+    }
+  }, [skippedItems]);
+
+  const handleExportSkippedList = useCallback(() => {
+    if (skippedItems.length === 0) {
+      message.warning('当前没有可导出的冲突清单');
+      return;
+    }
+
+    downloadConflictCsv(skippedItems);
+    message.success('已导出冲突清单');
+  }, [skippedItems]);
 
   const handleBatchParse = useCallback(async () => {
     // 筛选所有状态为 'parse-error' 的数据
@@ -577,6 +800,20 @@ const BatchActionBar = (props: BatchActionBarProps) => {
             导入失败：{importErrorCount}
           </Box>
         )}
+        {importSkippedCount > 0 && (
+          <Box
+            sx={{
+              fontSize: 12,
+              color: 'warning.dark',
+              bgcolor: alpha(theme.palette.warning.main, 0.1),
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+            }}
+          >
+            冲突跳过：{importSkippedCount}
+          </Box>
+        )}
         {loadingCount > 0 && (
           <Stack
             direction='row'
@@ -600,6 +837,24 @@ const BatchActionBar = (props: BatchActionBarProps) => {
         )}
       </Stack>
       <Stack direction='row' gap={2} alignItems='center'>
+        <Button
+          size='small'
+          color='primary'
+          disabled={importSkippedCount === 0}
+          sx={{ minWidth: 0, p: 0, color: 'primary.main' }}
+          onClick={handleCopySkippedList}
+        >
+          复制冲突清单
+        </Button>
+        <Button
+          size='small'
+          color='primary'
+          disabled={importSkippedCount === 0}
+          sx={{ minWidth: 0, p: 0, color: 'primary.main' }}
+          onClick={handleExportSkippedList}
+        >
+          导出冲突清单
+        </Button>
         <Button
           size='small'
           color='primary'

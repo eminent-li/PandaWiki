@@ -34,6 +34,8 @@ export interface ListDataItem {
   file?: boolean;
   fileData?: File;
   progress?: number;
+  target_path?: string;
+  conflict_path?: string;
 
   open?: boolean;
   folderReq?: boolean;
@@ -49,7 +51,8 @@ export interface ListDataItem {
     | 'parse-error'
     | 'importing'
     | 'imported'
-    | 'import-error';
+    | 'import-error'
+    | 'import-skipped';
 }
 
 const AddDocByType = ({

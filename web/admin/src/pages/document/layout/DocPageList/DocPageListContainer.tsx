@@ -20,6 +20,87 @@ import {
   reopenFolders,
 } from './utils';
 
+const CSV_HEADERS = [
+  '导航',
+  '路径',
+  '文件名称',
+  '状态',
+  '内容类型',
+  '创建时间',
+  '更新时间',
+];
+
+const escapeCsvValue = (value: string) => {
+  const normalized = value.replace(/"/g, '""');
+  return `"${normalized}"`;
+};
+
+const formatNodeStatus = (status?: number) => {
+  if (status === 2) return '已发布';
+  if (status === 1) return '草稿';
+  return '';
+};
+
+const buildNodePathMap = (nodes: DomainNodeListItemResp[]) => {
+  const nodeMap = new Map(
+    nodes.map(node => [node.id ?? '', node] as const).filter(([id]) => !!id),
+  );
+
+  const cache = new Map<string, string>();
+
+  const getPath = (node?: DomainNodeListItemResp): string => {
+    if (!node?.id) return '';
+    const cached = cache.get(node.id);
+    if (cached !== undefined) return cached;
+
+    const names: string[] = [];
+    let current: DomainNodeListItemResp | undefined = node;
+    const visited = new Set<string>();
+    while (current?.id && !visited.has(current.id)) {
+      visited.add(current.id);
+      if (current.name) {
+        names.unshift(current.name);
+      }
+      current = current.parent_id
+        ? nodeMap.get(current.parent_id)
+        : undefined;
+    }
+
+    const path = names.join('/');
+    cache.set(node.id, path);
+    return path;
+  };
+
+  return getPath;
+};
+
+const getParentPath = (
+  nodes: DomainNodeListItemResp[],
+  getPath: (node?: DomainNodeListItemResp) => string,
+  node: DomainNodeListItemResp,
+) => {
+  if (!node.parent_id) {
+    return '';
+  }
+
+  return getPath(nodes.find(item => item.id === node.parent_id));
+};
+
+const downloadCsv = (filename: string, rows: string[][]) => {
+  const csv = ['\uFEFF' + CSV_HEADERS.join(','), ...rows.map(row => row.join(','))].join(
+    '\n',
+  );
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+};
+
 const DocPageListContainer = ({
   groups,
   nav_id,
@@ -199,6 +280,33 @@ const DocPageListContainer = ({
     setOpraData(list.filter(item => selected.includes(item.id!)));
   }, [list, selected]);
 
+  const handleExportManifest = useCallback(() => {
+    const rows = groups.flatMap(group => {
+      const getPath = buildNodePathMap(group.list ?? []);
+      return (group.list ?? [])
+        .filter(node => node.type === 2)
+        .map(node => [
+          escapeCsvValue(group.nav_name ?? ''),
+          escapeCsvValue(getParentPath(group.list ?? [], getPath, node)),
+          escapeCsvValue(node.name ?? ''),
+          escapeCsvValue(formatNodeStatus(node.status)),
+          escapeCsvValue(node.content_type ?? ''),
+          escapeCsvValue(node.created_at ?? ''),
+          escapeCsvValue(node.updated_at ?? ''),
+        ]);
+    });
+
+    if (rows.length === 0) {
+      message.warning('当前知识库暂无可导出的文件');
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadCsv(`kb-file-manifest-${timestamp}.csv`, rows);
+  }, [groups]);
+
+  const exportDisabled = !groups.some(group => (group.list?.length ?? 0) > 0);
+
   return (
     <>
       <DocPageListContent
@@ -236,6 +344,8 @@ const DocPageListContainer = ({
         setOpraData={setOpraData}
         dragTreeRef={dragTreeRef}
         refresh={refresh}
+        onExportManifest={handleExportManifest}
+        exportDisabled={exportDisabled}
         createLocal={createLocal}
         scrollTo={scrollTo}
         registerTreeDragHandlers={registerTreeDragHandlers}

@@ -39,6 +39,8 @@ export interface DocPageListContentProps {
   setOpraData: (data: { id?: string }[]) => void;
   dragTreeRef: React.RefObject<DragTreeHandle | null>;
   refresh: () => void;
+  onExportManifest: () => void;
+  exportDisabled?: boolean;
   createLocal: (node: {
     id: string;
     name: string;
@@ -72,6 +74,8 @@ const DocPageListContent = ({
   setOpraData,
   dragTreeRef,
   refresh,
+  onExportManifest,
+  exportDisabled = false,
   createLocal,
   scrollTo,
   registerTreeDragHandlers,
@@ -187,6 +191,14 @@ const DocPageListContent = ({
         )}
         {/* 右侧：多功能按钮（添加文档 + 批量操作） */}
         <Stack direction={'row'} alignItems={'center'} gap={2}>
+          <Button
+            variant='outlined'
+            size='small'
+            disabled={loading || exportDisabled}
+            onClick={onExportManifest}
+          >
+            导出文件清单
+          </Button>
           <AddDocBtn
             refresh={refresh}
             createLocal={createLocal}
