@@ -45,6 +45,10 @@ bash -c "$(curl -fsSLk https://release.baizhi.cloud/panda-wiki/manager.sh)"
 
 > 关于安装与部署的更多细节请参考 [安装 PandaWiki](https://pandawiki.docs.baizhi.cloud/node/01971602-bb4e-7c90-99df-6d3c38cfd6d5)。
 
+> 对于自定义 Docker Compose 部署，请务必为 `qdrant` 服务显式配置 `nofile` 上限，否则在 collection 较多或恢复阶段可能出现 `Too many open files` 并导致向量检索、文档学习异常。可参考 [docs/operations/docker-compose.qdrant-ulimits.override.yml.example](docs/operations/docker-compose.qdrant-ulimits.override.yml.example)。
+
+> 当前一键安装命令使用的是外部下发的 `manager.sh`，如果需要让正式安装流程默认带上该配置，还需要同步修改发布侧安装模板。
+
 ### 登录 PandaWiki
 
 在上一步中，安装命令执行结束后，你的终端会输出以下内容。

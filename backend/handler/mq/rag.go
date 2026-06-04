@@ -53,11 +53,11 @@ func (h *RAGMQHandler) HandleNodeContentVectorRequest(ctx context.Context, msg t
 		kb, err := h.kbRepo.GetKnowledgeBaseByID(ctx, request.KBID)
 		if err != nil {
 			h.logger.Error("get kb failed", log.Error(err))
-			return nil
+			return err
 		}
 		if err := h.rag.UpdateDocumentGroupIDs(ctx, kb.DatasetID, request.DocID, request.GroupIds); err != nil {
 			h.logger.Error("update node group failed", log.Error(err))
-			return nil
+			return err
 		}
 		h.logger.Info("update node group success", log.Any("doc_id", request.DocID), log.Any("group_ids", request.GroupIds))
 
@@ -66,7 +66,7 @@ func (h *RAGMQHandler) HandleNodeContentVectorRequest(ctx context.Context, msg t
 		nodeRelease, err := h.nodeRepo.GetNodeReleaseWithDirPathByID(ctx, request.NodeReleaseID)
 		if err != nil {
 			h.logger.Error("get node content by ids failed", log.Error(err))
-			return nil
+			return err
 		}
 		if nodeRelease.Type == domain.NodeTypeFolder {
 			h.logger.Info("node is folder, skip upsert", log.Any("node_release_id", request.NodeReleaseID))
@@ -75,13 +75,13 @@ func (h *RAGMQHandler) HandleNodeContentVectorRequest(ctx context.Context, msg t
 		kb, err := h.kbRepo.GetKnowledgeBaseByID(ctx, request.KBID)
 		if err != nil {
 			h.logger.Error("get kb failed", log.Error(err), log.String("kb_id", request.KBID))
-			return nil
+			return err
 		}
 
 		groupIds, err := h.nodeRepo.GetNodeAuthGroupIdsByNodeId(ctx, nodeRelease.NodeID, consts.NodePermNameAnswerable)
 		if err != nil {
 			h.logger.Error("get groupIds failed", log.Error(err), log.String("kb_id", request.KBID))
-			return nil
+			return err
 		}
 
 		// upsert node content chunks
@@ -95,25 +95,25 @@ func (h *RAGMQHandler) HandleNodeContentVectorRequest(ctx context.Context, msg t
 		})
 		if err != nil {
 			h.logger.Error("upsert node content vector failed", log.Error(err))
-			return nil
+			return err
 		}
 		// update node doc_id
 		if err := h.nodeRepo.UpdateNodeReleaseDocID(ctx, request.NodeReleaseID, docID); err != nil {
 			h.logger.Error("update node doc_id failed", log.String("node_id", request.NodeReleaseID), log.Error(err))
-			return nil
+			return err
 		}
 		// delete old RAG records
 		// get old doc_ids by node_id
 		oldDocIDs, err := h.nodeRepo.GetOldNodeDocIDsByNodeID(ctx, nodeRelease.ID, nodeRelease.NodeID)
 		if err != nil {
 			h.logger.Error("get old doc_ids by node_id failed", log.String("node_id", nodeRelease.NodeID), log.Error(err))
-			return nil
+			return err
 		}
 		if len(oldDocIDs) > 0 {
 			// delete old RAG records
 			if err := h.rag.DeleteRecords(ctx, kb.DatasetID, oldDocIDs); err != nil {
 				h.logger.Error("delete old RAG records failed", log.String("kb_id", kb.ID), log.Error(err))
-				return nil
+				return err
 			}
 		}
 
@@ -123,11 +123,11 @@ func (h *RAGMQHandler) HandleNodeContentVectorRequest(ctx context.Context, msg t
 		kb, err := h.kbRepo.GetKnowledgeBaseByID(ctx, request.KBID)
 		if err != nil {
 			h.logger.Error("get kb failed", log.Error(err))
-			return nil
+			return err
 		}
 		if err := h.rag.DeleteRecords(ctx, kb.DatasetID, []string{request.DocID}); err != nil {
 			h.logger.Error("delete node content vector failed", log.Error(err))
-			return nil
+			return err
 		}
 		h.logger.Info("delete node content vector success", log.Any("deleted_id", request.NodeReleaseID), log.Any("deleted_doc_id", request.DocID))
 	case "summary":
@@ -135,7 +135,7 @@ func (h *RAGMQHandler) HandleNodeContentVectorRequest(ctx context.Context, msg t
 		node, err := h.nodeRepo.GetNodeByID(ctx, request.NodeID)
 		if err != nil {
 			h.logger.Error("get node by id failed", log.Error(err))
-			return nil
+			return err
 		}
 		if node.Type == domain.NodeTypeFolder {
 			h.logger.Info("node is folder, skip summary", log.Any("node_id", request.NodeID))
@@ -145,22 +145,22 @@ func (h *RAGMQHandler) HandleNodeContentVectorRequest(ctx context.Context, msg t
 		model, err := h.modelUsecase.GetChatModel(ctx)
 		if err != nil {
 			h.logger.Error("get chat model failed", log.Error(err))
-			return nil
+			return err
 		}
 
 		summary, err := h.llmUsecase.SummaryNode(ctx, request.KBID, model, node.Name, node.Content)
 		if err != nil {
 			h.logger.Error("summary node content failed", log.Error(err))
-			return nil
+			return err
 		}
 		if err := h.nodeRepo.UpdateNodeSummary(ctx, request.KBID, request.NodeID, summary); err != nil {
 			h.logger.Error("update node summary failed", log.Error(err))
-			return nil
+			return err
 		}
 		if node.Status == domain.NodeStatusPublished {
 			if err := h.nodeRepo.UpdateNodeStatus(ctx, request.KBID, request.NodeID, domain.NodeStatusDraft); err != nil {
 				h.logger.Error("update node status failed", log.Error(err))
-				return nil
+				return err
 			}
 		}
 
