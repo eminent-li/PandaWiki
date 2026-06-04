@@ -38,6 +38,11 @@ interface StoreContextType {
   setCatalogWidth?: (value: number) => void;
   qaModalOpen?: boolean;
   setQaModalOpen?: (value: boolean) => void;
+  homeInlineQaOpen?: boolean;
+  homeInlineQaMode?: 'chat' | 'search';
+  homeInlineQaRequestKey?: number;
+  triggerHomeInlineQa?: (mode?: 'chat' | 'search') => void;
+  closeHomeInlineQa?: () => void;
   /** 栏目列表，多栏目时展示导航栏 */
   navList?: NavItem[];
   /** 当前选中的栏目 id */
@@ -101,6 +106,11 @@ export default function StoreProvider({
     return initialTree;
   });
   const [qaModalOpen, setQaModalOpen] = useState(false);
+  const [homeInlineQaOpen, setHomeInlineQaOpen] = useState(false);
+  const [homeInlineQaMode, setHomeInlineQaMode] = useState<'chat' | 'search'>(
+    'chat',
+  );
+  const [homeInlineQaRequestKey, setHomeInlineQaRequestKey] = useState(0);
   const [navList] = useState<NavItem[]>(initialNavList);
   const [navDataMap] =
     useState<Record<string, NodeListItem[]>>(initialNavDataMap);
@@ -171,6 +181,16 @@ export default function StoreProvider({
     }
   }, [selectedNavId, navDataMap, docId, catalogFolderExpand]);
 
+  const triggerHomeInlineQa = (mode: 'chat' | 'search' = 'chat') => {
+    setHomeInlineQaMode(mode);
+    setHomeInlineQaOpen(true);
+    setHomeInlineQaRequestKey(prev => prev + 1);
+  };
+
+  const closeHomeInlineQa = () => {
+    setHomeInlineQaOpen(false);
+  };
+
   return (
     <StoreContext.Provider
       value={{
@@ -192,6 +212,11 @@ export default function StoreProvider({
         },
         qaModalOpen,
         setQaModalOpen,
+        homeInlineQaOpen,
+        homeInlineQaMode,
+        homeInlineQaRequestKey,
+        triggerHomeInlineQa,
+        closeHomeInlineQa,
         navList,
         selectedNavId,
         setSelectedNavId,

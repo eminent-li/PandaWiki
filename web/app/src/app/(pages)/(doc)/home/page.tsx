@@ -1,6 +1,7 @@
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import Home from '@/views/home';
+import HomeInlineQaPanel from '@/views/home/HomeInlineQaPanel';
 import { WelcomeFooter } from '@/components/footer';
 import { ThemeProvider } from '@ctzhian/ui';
 import { WelcomeHeader } from '@/components/header';
@@ -74,6 +75,7 @@ const HomePage = () => {
         <WelcomeHeader showSearch={showSearch} />
         <Stack sx={{ flex: 1 }}>
           <Home />
+          <HomeInlineQaPanel />
         </Stack>
         <WelcomeFooter />
       </Stack>

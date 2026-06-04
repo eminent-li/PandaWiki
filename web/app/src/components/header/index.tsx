@@ -132,17 +132,13 @@ export const WelcomeHeader = ({
     mobile = false,
     kbDetail,
     catalogWidth,
-    setQaModalOpen,
+    triggerHomeInlineQa,
     authInfo,
   } = useStore();
   const handleSearch = (value?: string, type: 'chat' | 'search' = 'chat') => {
     if (value?.trim()) {
-      if (type === 'chat') {
-        sessionStorage.setItem('chat_search_query', value.trim());
-        setQaModalOpen?.(true);
-      } else {
-        sessionStorage.setItem('chat_search_query', value.trim());
-      }
+      sessionStorage.setItem('chat_search_query', value.trim());
+      triggerHomeInlineQa?.(type);
     }
   };
   return (
@@ -166,14 +162,13 @@ export const WelcomeHeader = ({
         })) || []
       }
       onSearch={handleSearch}
-      onQaClick={() => setQaModalOpen?.(true)}
+      onQaClick={() => triggerHomeInlineQa?.('chat')}
     >
       {!!authInfo && (
         <Box sx={{ ml: 2 }}>
           <LogoutButton />
         </Box>
       )}
-      <QaModal />
     </WelcomeHeaderComponent>
   );
 };
