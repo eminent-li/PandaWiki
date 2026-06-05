@@ -15,8 +15,8 @@ import {
 import { IconJinsousuo, IconZhinengwenda } from '@panda-wiki/icons';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import AiQaContent from '../widget/AiQaContent';
-import SearchDocContent from '../widget/SearchDocContent';
+import AiQaContent from '@/components/QaModal/AiQaContent';
+import SearchDocContent from '@/components/QaModal/SearchDocContent';
 
 const StyledTabs = styled(Tabs)(({ theme }) => ({
   minHeight: 'auto',
