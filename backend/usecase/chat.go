@@ -34,7 +34,17 @@ type ChatUsecase struct {
 	modelkit            *modelkit.ModelKit
 }
 
-const chatStreamTimeout = 290 * time.Second
+const (
+	chatStreamTimeout      = 290 * time.Second
+	chatPostProcessTimeout = 15 * time.Second
+)
+
+func contextErrString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
 
 func NewChatUsecase(llmUsecase *LLMUsecase, kbRepo *pg.KnowledgeBaseRepository, conversationUsecase *ConversationUsecase, modelUsecase *ModelUsecase, appRepo *pg.AppRepository,
 	blockWordRepo *pg.BlockWordRepo, nodeRepo *pg.NodeRepository, authRepo *pg.AuthRepo, logger *log.Logger) (*ChatUsecase, error) {
@@ -274,9 +284,30 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 			flushBuffer(ctx, "data")
 		}
 
+		u.logger.Info("chat stream finished",
+			log.String("conversation_id", req.ConversationID),
+			log.Int("answer_len", len(answer)),
+			log.Int("prompt_tokens", usage.PromptTokens),
+			log.Int("completion_tokens", usage.CompletionTokens),
+			log.Int("total_tokens", usage.TotalTokens),
+			log.Any("has_chat_error", chatErr != nil),
+			log.String("chat_ctx_err", contextErrString(chatCtx.Err())),
+			log.String("request_ctx_err", contextErrString(ctx.Err())),
+		)
+
+		postProcessCtx, postProcessCancel := context.WithTimeout(context.WithoutCancel(ctx), chatPostProcessTimeout)
+		defer postProcessCancel()
+
+		u.logger.Info("start assistant post process",
+			log.String("conversation_id", req.ConversationID),
+			log.Int("answer_len", len(answer)),
+			log.Any("has_chat_error", chatErr != nil),
+			log.String("request_ctx_err", contextErrString(ctx.Err())),
+		)
+
 		// save assistant answer to conversation message
 
-		if err := u.conversationUsecase.CreateChatConversationMessage(ctx, req.KBID, &domain.ConversationMessage{
+		if err := u.conversationUsecase.CreateChatConversationMessage(postProcessCtx, req.KBID, &domain.ConversationMessage{
 			ID:               messageId,
 			ConversationID:   req.ConversationID,
 			KBID:             req.KBID,
@@ -291,16 +322,18 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 			RemoteIP:         req.RemoteIP,
 			ParentID:         userMessageId,
 		}); err != nil {
-			u.logger.Error("failed to save assistant answer to conversation message", log.Error(err))
+			u.logger.Error("failed to save assistant answer to conversation message", log.Error(err), log.String("conversation_id", req.ConversationID))
 			eventCh <- domain.SSEEvent{Type: "error", Content: "failed to save assistant answer to conversation message"}
 			return
 		}
+		u.logger.Info("assistant answer saved", log.String("conversation_id", req.ConversationID), log.Int("answer_len", len(answer)))
 		// update model usage
-		if err := u.modelUsecase.UpdateUsage(ctx, req.ModelInfo.ID, &usage); err != nil {
-			u.logger.Error("failed to update model usage", log.Error(err))
+		if err := u.modelUsecase.UpdateUsage(postProcessCtx, req.ModelInfo.ID, &usage); err != nil {
+			u.logger.Error("failed to update model usage", log.Error(err), log.String("conversation_id", req.ConversationID))
 			eventCh <- domain.SSEEvent{Type: "error", Content: "failed to update model usage"}
 			return
 		}
+		u.logger.Info("assistant post process finished", log.String("conversation_id", req.ConversationID), log.Int("total_tokens", usage.TotalTokens))
 
 		if chatErr != nil {
 			if errors.Is(chatErr, context.DeadlineExceeded) || errors.Is(chatCtx.Err(), context.DeadlineExceeded) {
@@ -308,7 +341,7 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 				eventCh <- domain.SSEEvent{Type: "error", Content: "回答超时，请稍后重试"}
 				return
 			}
-			u.logger.Error("对话失败", log.Error(chatErr))
+			u.logger.Error("对话失败", log.Error(chatErr), log.String("conversation_id", req.ConversationID))
 			eventCh <- domain.SSEEvent{Type: "error", Content: "对话失败，请稍后再试"}
 			return
 		}
