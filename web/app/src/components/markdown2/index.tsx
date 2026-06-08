@@ -80,11 +80,13 @@ const MarkDown2: React.FC<MarkDown2Props> = ({
   const [showThink, setShowThink] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImgBlobUrl, setPreviewImgBlobUrl] = useState('');
+  const [displayContent, setDisplayContent] = useState(content);
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const lastContentRef = useRef<string>('');
   const mdRef = useRef<MarkdownIt | null>(null);
+  const renderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mermaidSuccessIdRef = useRef<Map<number, string>>(new Map());
   const imageRenderCacheRef = useRef<Map<number, string>>(new Map()); // 图片渲染缓存（HTML）
   const imageBlobCacheRef = useRef<Map<string, string>>(new Map()); // 图片 blob URL 缓存
@@ -395,12 +397,36 @@ const MarkDown2: React.FC<MarkDown2Props> = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (renderTimerRef.current) {
+      clearTimeout(renderTimerRef.current);
+      renderTimerRef.current = null;
+    }
+
+    if (!loading) {
+      setDisplayContent(content);
+      return;
+    }
+
+    renderTimerRef.current = setTimeout(() => {
+      setDisplayContent(content);
+      renderTimerRef.current = null;
+    }, 80);
+
+    return () => {
+      if (renderTimerRef.current) {
+        clearTimeout(renderTimerRef.current);
+        renderTimerRef.current = null;
+      }
+    };
+  }, [content, loading]);
+
   // 主要的内容渲染 Effect
   useEffect(() => {
-    if (!containerRef.current || !mdRef.current || !content) return;
+    if (!containerRef.current || !mdRef.current || !displayContent) return;
 
     // 处理 think 标签格式
-    const processedContent = processThinkingContent(content);
+    const processedContent = processThinkingContent(displayContent);
 
     // 检查内容变化
     if (processedContent === lastContentRef.current) return;
@@ -420,7 +446,7 @@ const MarkDown2: React.FC<MarkDown2Props> = ({
         containerRef.current.innerHTML = '<div>Markdown 渲染错误</div>';
       }
     }
-  }, [content, customizeRenderer, scrollToBottom]);
+  }, [displayContent, customizeRenderer, scrollToBottom]);
 
   // 添加代码块点击复制和图片点击预览功能（事件代理）
   useEffect(() => {

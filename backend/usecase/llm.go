@@ -64,6 +64,7 @@ func (u *LLMUsecase) BuildConversationMessageWithRAG(
 	kbID string,
 	groupIDs []int,
 	systemPrompt string,
+	questionOverride string,
 ) ([]*schema.Message, []*domain.RankedNodeChunks, error) {
 	messages := make([]*schema.Message, 0)
 	rankedNodes := make([]*domain.RankedNodeChunks, 0)
@@ -75,12 +76,16 @@ func (u *LLMUsecase) BuildConversationMessageWithRAG(
 	}
 	if len(msgs) > 0 {
 		historyMessages := make([]*schema.Message, 0)
-		for _, msg := range msgs {
+		for idx, msg := range msgs {
 			switch msg.Role {
 			case schema.Assistant:
 				historyMessages = append(historyMessages, schema.AssistantMessage(msg.Content, nil))
 			case schema.User:
-				content := u.formatMessageWithImages(msg.Content, msg.ImagePaths)
+				messageContent := msg.Content
+				if questionOverride != "" && idx == len(msgs)-1 {
+					messageContent = questionOverride
+				}
+				content := u.formatMessageWithImages(messageContent, msg.ImagePaths)
 				historyMessages = append(historyMessages, schema.UserMessage(content))
 			default:
 				continue

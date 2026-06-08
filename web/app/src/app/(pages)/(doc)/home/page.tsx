@@ -11,10 +11,16 @@ import { useStore } from '@/provider';
 import { THEME_TO_PALETTE } from '@panda-wiki/themes/constants';
 
 const HomePage = () => {
-  const { kbDetail } = useStore();
+  const { kbDetail, homeInlineQaOpen, homeInlineQaConversationId } = useStore();
   const [showSearch, setShowSearch] = useState(false);
+  const showWelcomeLayout = !homeInlineQaOpen && !homeInlineQaConversationId;
 
   useEffect(() => {
+    if (!showWelcomeLayout) {
+      setShowSearch(false);
+      return;
+    }
+
     let ticking = false;
 
     const checkVisibility = () => {
@@ -46,7 +52,7 @@ const HomePage = () => {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [showWelcomeLayout]);
 
   const theme = useMemo(() => {
     // @ts-ignore
@@ -72,12 +78,12 @@ const HomePage = () => {
         justifyContent='space-between'
         sx={{ minHeight: '100vh', bgcolor: 'background.default' }}
       >
-        <WelcomeHeader showSearch={showSearch} />
+        {showWelcomeLayout && <WelcomeHeader showSearch={showSearch} />}
         <Stack sx={{ flex: 1 }}>
-          <Home />
+          {showWelcomeLayout && <Home />}
           <HomeInlineQaPanel />
         </Stack>
-        <WelcomeFooter />
+        {showWelcomeLayout && <WelcomeFooter />}
       </Stack>
     </ThemeProvider>
   );

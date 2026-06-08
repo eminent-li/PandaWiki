@@ -99,6 +99,53 @@ const AnswerStatus = {
   4: '',
 };
 
+const MAX_HISTORY_CONTEXT_TURNS = 3;
+const MAX_HISTORY_CONTEXT_CHARS = 4000;
+
+const trimContextText = (text: string, maxChars: number) => {
+  if (text.length <= maxChars) {
+    return text;
+  }
+
+  return `${text.slice(0, maxChars)}...`;
+};
+
+const buildHistoryContextMessage = (
+  items: ConversationItem[],
+  question: string,
+) => {
+  const historyItems = items
+    .filter(item => item.source === 'history')
+    .slice(-MAX_HISTORY_CONTEXT_TURNS);
+
+  if (historyItems.length === 0) {
+    return question;
+  }
+
+  const contextBlocks = historyItems.map((item, index) => {
+    const answer = item.a || item.thinking_content || '';
+    return [
+      `第${index + 1}轮问题：${item.q}`,
+      `第${index + 1}轮回答：${trimContextText(answer, 1200)}`,
+    ].join('\n');
+  });
+
+  const contextText = trimContextText(
+    contextBlocks.join('\n\n'),
+    MAX_HISTORY_CONTEXT_CHARS,
+  );
+
+  return [
+    '以下是用户此前同一主题下的历史对话，请优先继承这些上下文来理解本次追问。',
+    '如果本次问题存在省略、代词指代或上下文延续，请默认它延续的是下面这些历史内容，而不是一个全新的独立问题。',
+    '',
+    '历史对话：',
+    contextText,
+    '',
+    `用户当前追问：${question}`,
+  ].join('\n');
+};
+
 const LoadingContent = ({
   thinking,
 }: {
@@ -131,7 +178,19 @@ const AiQaContent: React.FC<{
   hotSearch: string[];
   placeholder: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
-}> = ({ hotSearch, placeholder, inputRef }) => {
+  onConversationResolved?: (conversationId: string, subject: string) => void;
+  activeConversationId?: string;
+  onConversationIdChange?: (conversationId?: string) => void;
+  persistConversationInUrl?: boolean;
+}> = ({
+  hotSearch,
+  placeholder,
+  inputRef,
+  onConversationResolved,
+  activeConversationId,
+  onConversationIdChange,
+  persistConversationInUrl = true,
+}) => {
   const sseClientRef = useRef<SSEClient<{
     type: string;
     content: string;
@@ -160,9 +219,19 @@ const AiQaContent: React.FC<{
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fuzzySuggestions, setFuzzySuggestions] = useState<string[]>([]);
   const [showFuzzySuggestions, setShowFuzzySuggestions] = useState(false);
+  const lastResolvedConversationRef = useRef('');
+  const loadingHistoryConversationRef = useRef('');
+  const loadedHistoryConversationRef = useRef('');
+  const loadingRef = useRef(false);
+  const conversationIdRef = useRef('');
+  const nonceRef = useRef('');
+  const shouldDecorateCancelRef = useRef(false);
+  const onConversationResolvedRef = useRef(onConversationResolved);
+  const onConversationIdChangeRef = useRef(onConversationIdChange);
 
   const searchParams = useSearchParams();
   const basePath = useBasePath();
+  const urlConversationId = searchParams.get('cid');
 
   // 使用智能滚动 hook（内置 ResizeObserver 自动监听内容高度变化，自动滚动）
   const { setShouldAutoScroll } = useSmartScroll({
@@ -170,12 +239,36 @@ const AiQaContent: React.FC<{
     behavior: 'smooth',
   });
 
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  useEffect(() => {
+    nonceRef.current = nonce;
+  }, [nonce]);
+
+  useEffect(() => {
+    onConversationResolvedRef.current = onConversationResolved;
+  }, [onConversationResolved]);
+
+  useEffect(() => {
+    onConversationIdChangeRef.current = onConversationIdChange;
+  }, [onConversationIdChange]);
+
   const onReset = () => {
     if (loading) {
       handleSearchAbort();
     }
     handleSearch(true);
+    loadingHistoryConversationRef.current = '';
+    loadedHistoryConversationRef.current = '';
     setConversationId('');
+    conversationIdRef.current = '';
+    onConversationIdChangeRef.current?.('');
     setConversation([]);
     setFullAnswer('');
     setInput('');
@@ -188,6 +281,7 @@ const AiQaContent: React.FC<{
     setUploadedImages([]);
     setLoading(false);
     setNonce('');
+    nonceRef.current = '';
   };
 
   const handleSearch = (reset: boolean = false) => {
@@ -408,7 +502,7 @@ const AiQaContent: React.FC<{
     }
   };
 
-  const chatAnswer = async (q: string) => {
+  const chatAnswer = async (q: string, questionOverride?: string) => {
     setLoading(true);
     setThinking(1);
 
@@ -432,24 +526,30 @@ const AiQaContent: React.FC<{
 
     const reqData = {
       message: q,
+      question_override: questionOverride,
       image_paths: imagePaths,
       nonce: '',
       conversation_id: '',
       app_type: 1,
       captcha_token: token,
     };
-    if (conversationId) reqData.conversation_id = conversationId;
-    if (nonce) reqData.nonce = nonce;
+    const currentConversationId = conversationIdRef.current;
+    const currentNonce = nonceRef.current;
+
+    if (currentConversationId) reqData.conversation_id = currentConversationId;
+    if (currentNonce) reqData.nonce = currentNonce;
 
     if (sseClientRef.current) {
       sseClientRef.current.subscribe(
         JSON.stringify(reqData),
         ({ type, content, chunk_result }) => {
           if (type === 'conversation_id') {
+            conversationIdRef.current += content;
             setConversationId(prev => prev + content);
           } else if (type === 'message_id') {
             messageIdRef.current += content;
           } else if (type === 'nonce') {
+            nonceRef.current += content;
             setNonce(prev => prev + content);
           } else if (type === 'error') {
             setLoading(false);
@@ -545,11 +645,25 @@ const AiQaContent: React.FC<{
   const onSearch = (q: string, reset: boolean = false) => {
     if (loading || (!q.trim() && uploadedImages.length === 0)) return;
     setShouldAutoScroll(true); // 开始新搜索时，重置为自动滚动
-    const newConversation = reset
-      ? []
-      : conversation.some(item => item.source === 'history')
-        ? []
-        : [...conversation];
+    const shouldStartFreshFromHistory =
+      conversation.some(item => item.source === 'history') && !nonceRef.current;
+    const outboundQuestion = shouldStartFreshFromHistory
+      ? buildHistoryContextMessage(conversation, q)
+      : q;
+
+    if (shouldStartFreshFromHistory) {
+      loadingHistoryConversationRef.current = '';
+      loadedHistoryConversationRef.current = '';
+      setConversationId('');
+      conversationIdRef.current = '';
+      onConversationIdChangeRef.current?.('');
+      setNonce('');
+      nonceRef.current = '';
+    }
+
+    loadingHistoryConversationRef.current = '';
+    loadedHistoryConversationRef.current = '';
+    const newConversation = reset ? [] : [...conversation];
     lastResultExpendRef.current = false;
     newConversation.push({
       image_paths: uploadedImages.map(img => img.url),
@@ -569,13 +683,14 @@ const AiQaContent: React.FC<{
     setConversation(newConversation);
     setFullAnswer('');
     setTimeout(() => {
-      chatAnswer(q);
+      chatAnswer(q, shouldStartFreshFromHistory ? outboundQuestion : undefined);
       setInput('');
       setUploadedImages([]);
     }, 0);
   };
 
-  const handleSearchAbort = () => {
+  const handleSearchAbort = (shouldDecorateCancel: boolean = false) => {
+    shouldDecorateCancelRef.current = shouldDecorateCancel;
     sseClientRef.current?.unsubscribe();
     setLoading(false);
     setThinking(4);
@@ -615,6 +730,10 @@ const AiQaContent: React.FC<{
       headers: {
         'Content-Type': 'application/json',
       },
+      onComplete: () => {
+        setLoading(false);
+        setThinking(4);
+      },
       onError: error => {
         setLoading(false);
         setThinking(4);
@@ -628,6 +747,11 @@ const AiQaContent: React.FC<{
       onCancel: () => {
         setLoading(false);
         setThinking(4);
+        if (!shouldDecorateCancelRef.current) {
+          shouldDecorateCancelRef.current = false;
+          return;
+        }
+        shouldDecorateCancelRef.current = false;
         setConversation(prev => {
           const newConversation = [...prev];
           const lastConversation = newConversation[newConversation.length - 1];
@@ -648,17 +772,18 @@ const AiQaContent: React.FC<{
     if (searchQuery) {
       sessionStorage.removeItem('chat_search_query');
       const newSearchParams = new URLSearchParams(searchParams.toString());
-      newSearchParams.delete('cid');
       newSearchParams.delete('ask');
       window.history.replaceState(null, '', newSearchParams.toString());
       onSearch(searchQuery, true);
     }
     return () => {
       handleSearchAbort();
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.delete('cid');
-      currentUrl.searchParams.delete('ask');
-      window.history.replaceState(null, '', currentUrl.toString());
+      if (persistConversationInUrl) {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete('cid');
+        currentUrl.searchParams.delete('ask');
+        window.history.replaceState(null, '', currentUrl.toString());
+      }
       setTimeout(() => {
         onReset();
       });
@@ -667,75 +792,135 @@ const AiQaContent: React.FC<{
 
   useEffect(() => {
     if (conversationId) {
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set('cid', conversationId);
-      currentUrl.searchParams.delete('ask');
-      window.history.replaceState(null, '', currentUrl.toString());
+      onConversationIdChangeRef.current?.(conversationId);
+      if (persistConversationInUrl) {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('cid', conversationId);
+        currentUrl.searchParams.delete('ask');
+        window.history.replaceState(null, '', currentUrl.toString());
+      }
     }
-  }, [conversationId]);
+  }, [conversationId, persistConversationInUrl]);
 
   useEffect(() => {
-    const cid = searchParams.get('cid');
-    if (cid) {
-      const conversation: ConversationItem[] = [];
-      getShareV1ConversationDetail({
-        id: cid,
-      }).then(res => {
-        if (res.messages) {
-          let current: Partial<ConversationItem> = {
-            chunk_result: [],
-          };
-          res.messages.forEach(message => {
-            if (message.role === 'user') {
-              current = {
-                image_paths: message.image_paths || [],
-                q: message.content,
-                chunk_result: [],
-              };
-            } else if (message.role === 'assistant') {
-              if (
-                current.q ||
-                (current.image_paths && current.image_paths.length > 0)
-              ) {
-                const { thinkingContent, answerContent } =
-                  handleThinkingContent(message.content || '');
-                current.a = answerContent;
-                current.update_time = message.created_at;
-                current.score = 0;
-                current.message_id = '';
-                current.thinking_content = thinkingContent;
-                current.source = 'history';
-                current.id = uuidv4();
-                conversation.push(current as ConversationItem);
-                current = {};
-              }
-            }
-          });
-          if (
-            current.q ||
-            (current.image_paths && current.image_paths.length > 0)
-          ) {
-            conversation.push({
-              image_paths: current.image_paths || [],
-              q: current.q || '',
-              a: '',
-              score: 0,
-              update_time: '',
-              message_id: '',
-              source: 'history',
-              chunk_result: [],
-              thinking_content: '',
-              id: uuidv4(),
-              result_expend: true,
-              thinking_expend: true,
-            });
-          }
-        }
-        setConversation(conversation);
-        setShouldAutoScroll(false);
-      });
+    const subject = conversation.find(item => item.q?.trim())?.q?.trim();
+    if (!conversationId || !subject) {
+      return;
     }
-  }, []);
+    if (lastResolvedConversationRef.current === conversationId) {
+      return;
+    }
+    lastResolvedConversationRef.current = conversationId;
+    onConversationResolvedRef.current?.(conversationId, subject);
+  }, [conversationId, conversation]);
+
+  useEffect(() => {
+    const cid = activeConversationId || urlConversationId;
+    if (!cid) {
+      return;
+    }
+    if (
+      activeConversationId &&
+      activeConversationId === conversationIdRef.current
+    ) {
+      return;
+    }
+    if (loadingHistoryConversationRef.current === cid) {
+      return;
+    }
+    if (
+      loadedHistoryConversationRef.current === cid &&
+      conversationIdRef.current === cid
+    ) {
+      return;
+    }
+
+    loadingHistoryConversationRef.current = cid;
+    loadedHistoryConversationRef.current = '';
+
+    if (loadingRef.current) {
+      handleSearchAbort();
+    }
+
+    setConversationId(cid);
+    conversationIdRef.current = cid;
+    setFullAnswer('');
+    setNonce('');
+    nonceRef.current = '';
+    setThinking(4);
+    setLoading(false);
+    setConversation([]);
+
+    const historyConversation: ConversationItem[] = [];
+    getShareV1ConversationDetail({
+      id: cid,
+    }).then(res => {
+      if (loadingHistoryConversationRef.current !== cid) {
+        return;
+      }
+      if (res.messages) {
+        let current: Partial<ConversationItem> = {
+          chunk_result: [],
+        };
+        res.messages.forEach(message => {
+          if (message.role === 'user') {
+            current = {
+              image_paths: message.image_paths || [],
+              q: message.content,
+              chunk_result: [],
+            };
+          } else if (message.role === 'assistant') {
+            if (
+              current.q ||
+              (current.image_paths && current.image_paths.length > 0)
+            ) {
+              const { thinkingContent, answerContent } = handleThinkingContent(
+                message.content || '',
+              );
+              current.a = answerContent;
+              current.update_time = message.created_at;
+              current.score = 0;
+              current.message_id = '';
+              current.thinking_content = thinkingContent;
+              current.source = 'history';
+              current.id = uuidv4();
+              historyConversation.push(current as ConversationItem);
+              current = {};
+            }
+          }
+        });
+        if (
+          current.q ||
+          (current.image_paths && current.image_paths.length > 0)
+        ) {
+          historyConversation.push({
+            image_paths: current.image_paths || [],
+            q: current.q || '',
+            a: '',
+            score: 0,
+            update_time: '',
+            message_id: '',
+            source: 'history',
+            chunk_result: [],
+            thinking_content: '',
+            id: uuidv4(),
+            result_expend: true,
+            thinking_expend: true,
+          });
+        }
+      }
+      loadedHistoryConversationRef.current = cid;
+      loadingHistoryConversationRef.current = '';
+      setConversationId(cid);
+      conversationIdRef.current = cid;
+      setConversation(historyConversation);
+      if (res.subject) {
+        lastResolvedConversationRef.current = cid;
+        onConversationResolvedRef.current?.(cid, res.subject);
+      }
+      setShouldAutoScroll(false);
+    });
+  }, [activeConversationId, urlConversationId, setShouldAutoScroll]);
 
   useEffect(() => {
     if (!qaModalOpen) {
@@ -995,7 +1180,11 @@ const AiQaContent: React.FC<{
 
                 {/* AI回答内容 */}
                 <StyledAiBubbleContent>
-                  <MarkDown2 content={item.a} autoScroll={false} />
+                  <MarkDown2
+                    content={item.a}
+                    autoScroll={false}
+                    loading={index === conversation.length - 1 && loading}
+                  />
                 </StyledAiBubbleContent>
 
                 {/* 操作按钮 */}
@@ -1179,7 +1368,7 @@ const AiQaContent: React.FC<{
                   thinking={thinking}
                   onClick={() => {
                     setThinking(4);
-                    handleSearchAbort();
+                    handleSearchAbort(true);
                   }}
                 />
               ) : (

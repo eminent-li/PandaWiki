@@ -41,8 +41,14 @@ interface StoreContextType {
   homeInlineQaOpen?: boolean;
   homeInlineQaMode?: 'chat' | 'search';
   homeInlineQaRequestKey?: number;
-  triggerHomeInlineQa?: (mode?: 'chat' | 'search') => void;
+  homeInlineQaConversationId?: string;
+  triggerHomeInlineQa?: (
+    mode?: 'chat' | 'search',
+    options?: { reset?: boolean },
+  ) => void;
+  expandHomeInlineQa?: () => void;
   closeHomeInlineQa?: () => void;
+  setHomeInlineQaConversationId?: (conversationId?: string) => void;
   /** 栏目列表，多栏目时展示导航栏 */
   navList?: NavItem[];
   /** 当前选中的栏目 id */
@@ -106,11 +112,13 @@ export default function StoreProvider({
     return initialTree;
   });
   const [qaModalOpen, setQaModalOpen] = useState(false);
-  const [homeInlineQaOpen, setHomeInlineQaOpen] = useState(false);
+  const [homeInlineQaOpen, setHomeInlineQaOpen] = useState(true);
   const [homeInlineQaMode, setHomeInlineQaMode] = useState<'chat' | 'search'>(
     'chat',
   );
   const [homeInlineQaRequestKey, setHomeInlineQaRequestKey] = useState(0);
+  const [homeInlineQaConversationId, setHomeInlineQaConversationIdState] =
+    useState<string>('');
   const [navList] = useState<NavItem[]>(initialNavList);
   const [navDataMap] =
     useState<Record<string, NodeListItem[]>>(initialNavDataMap);
@@ -181,14 +189,27 @@ export default function StoreProvider({
     }
   }, [selectedNavId, navDataMap, docId, catalogFolderExpand]);
 
-  const triggerHomeInlineQa = (mode: 'chat' | 'search' = 'chat') => {
+  const triggerHomeInlineQa = (
+    mode: 'chat' | 'search' = 'chat',
+    options?: { reset?: boolean },
+  ) => {
     setHomeInlineQaMode(mode);
     setHomeInlineQaOpen(true);
-    setHomeInlineQaRequestKey(prev => prev + 1);
+    if (options?.reset !== false) {
+      setHomeInlineQaRequestKey(prev => prev + 1);
+    }
+  };
+
+  const expandHomeInlineQa = () => {
+    setHomeInlineQaOpen(true);
   };
 
   const closeHomeInlineQa = () => {
     setHomeInlineQaOpen(false);
+  };
+
+  const setHomeInlineQaConversationId = (conversationId?: string) => {
+    setHomeInlineQaConversationIdState(conversationId || '');
   };
 
   return (
@@ -215,8 +236,11 @@ export default function StoreProvider({
         homeInlineQaOpen,
         homeInlineQaMode,
         homeInlineQaRequestKey,
+        homeInlineQaConversationId,
         triggerHomeInlineQa,
+        expandHomeInlineQa,
         closeHomeInlineQa,
+        setHomeInlineQaConversationId,
         navList,
         selectedNavId,
         setSelectedNavId,

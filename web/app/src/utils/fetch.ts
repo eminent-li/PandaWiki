@@ -145,10 +145,19 @@ class SSEClient<T> {
   }
 
   public unsubscribe() {
-    this.controller.abort();
-    if (this.reader) {
-      this.reader.cancel();
+    const reader = this.reader;
+    this.reader = null;
+
+    if (!this.controller.signal.aborted) {
+      try {
+        this.controller.abort();
+      } catch {}
     }
+
+    if (reader) {
+      void reader.cancel().catch(() => {});
+    }
+
     this.options.onCancel?.(new Error('Request canceled'));
   }
 }

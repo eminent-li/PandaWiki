@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -32,6 +33,8 @@ type ChatUsecase struct {
 	logger              *log.Logger
 	modelkit            *modelkit.ModelKit
 }
+
+const chatStreamTimeout = 290 * time.Second
 
 func NewChatUsecase(llmUsecase *LLMUsecase, kbRepo *pg.KnowledgeBaseRepository, conversationUsecase *ConversationUsecase, modelUsecase *ModelUsecase, appRepo *pg.AppRepository,
 	blockWordRepo *pg.BlockWordRepo, nodeRepo *pg.NodeRepository, authRepo *pg.AuthRepo, logger *log.Logger) (*ChatUsecase, error) {
@@ -224,7 +227,7 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 			return
 		}
 
-		messages, rankedNodes, err := u.llmUsecase.BuildConversationMessageWithRAG(ctx, req.ConversationID, req.KBID, groupIds, req.Prompt)
+		messages, rankedNodes, err := u.llmUsecase.BuildConversationMessageWithRAG(ctx, req.ConversationID, req.KBID, groupIds, req.Prompt, req.QuestionOverride)
 		if err != nil {
 			u.logger.Error("build messages failed", log.Error(err))
 			eventCh <- domain.SSEEvent{Type: "error", Content: err.Error()}
@@ -261,7 +264,10 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 		// get words
 		onChunkAC, flushBuffer := u.CreateAcOnChunk(ctx, req.KBID, &answer, eventCh, blockWords)
 
-		chatErr := u.llmUsecase.ChatWithAgent(ctx, chatModel, messages, &usage, onChunkAC)
+		chatCtx, cancel := context.WithTimeout(ctx, chatStreamTimeout)
+		defer cancel()
+
+		chatErr := u.llmUsecase.ChatWithAgent(chatCtx, chatModel, messages, &usage, onChunkAC)
 
 		// 处理缓冲区中剩余的内容
 		if flushBuffer != nil {
@@ -297,6 +303,11 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 		}
 
 		if chatErr != nil {
+			if errors.Is(chatErr, context.DeadlineExceeded) || errors.Is(chatCtx.Err(), context.DeadlineExceeded) {
+				u.logger.Error("对话超时", log.Error(chatErr), log.String("conversation_id", req.ConversationID))
+				eventCh <- domain.SSEEvent{Type: "error", Content: "回答超时，请稍后重试"}
+				return
+			}
 			u.logger.Error("对话失败", log.Error(chatErr))
 			eventCh <- domain.SSEEvent{Type: "error", Content: "对话失败，请稍后再试"}
 			return

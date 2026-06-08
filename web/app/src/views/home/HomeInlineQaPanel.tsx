@@ -5,7 +5,7 @@ import {
   alpha,
   Box,
   Button,
-  Chip,
+  Divider,
   Stack,
   styled,
   Tab,
@@ -59,6 +59,14 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   },
 }));
 
+interface ConversationHistoryItem {
+  id: string;
+  subject: string;
+  updatedAt: string;
+}
+
+const MAX_HISTORY_ITEMS = 8;
+
 const HomeInlineQaPanel = () => {
   const {
     kbDetail,
@@ -66,19 +74,32 @@ const HomeInlineQaPanel = () => {
     homeInlineQaOpen,
     homeInlineQaMode,
     homeInlineQaRequestKey,
+    homeInlineQaConversationId,
+    triggerHomeInlineQa,
+    expandHomeInlineQa,
     closeHomeInlineQa,
+    setHomeInlineQaConversationId,
   } = useStore();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
   const aiQaInputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const hasUrlConversation = !!(
-    searchParams.get('ask') || searchParams.get('cid')
-  );
-  const visible = !!(homeInlineQaOpen || hasUrlConversation);
+  const hasAskInUrl = !!searchParams.get('ask');
+  const incomingConversationId = searchParams.get('cid');
+  const activeConversationId =
+    homeInlineQaConversationId || incomingConversationId || '';
+  const hasActiveConversation = !!activeConversationId;
+  const visible = !!(homeInlineQaOpen || hasAskInUrl || hasActiveConversation);
   const [searchMode, setSearchMode] = useState<'chat' | 'search'>(
     homeInlineQaMode || 'chat',
   );
+  const [historyItems, setHistoryItems] = useState<ConversationHistoryItem[]>(
+    [],
+  );
+
+  const historyStorageKey = useMemo(() => {
+    return `panda-wiki-home-conversation-history:${kbDetail?.base_url || kbDetail?.name || 'default'}`;
+  }, [kbDetail?.base_url, kbDetail?.name]);
 
   const placeholder = useMemo(() => {
     return (
@@ -93,6 +114,87 @@ const HomeInlineQaPanel = () => {
     );
     return bannerConfig?.banner_config?.hot_search || [];
   }, [kbDetail]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      const stored = window.localStorage.getItem(historyStorageKey);
+      if (!stored) {
+        setHistoryItems([]);
+        return;
+      }
+      const parsed = JSON.parse(stored) as ConversationHistoryItem[];
+      setHistoryItems(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setHistoryItems([]);
+    }
+  }, [historyStorageKey]);
+
+  const upsertHistoryItem = (conversationId: string, subject: string) => {
+    const normalizedSubject = subject.trim();
+    if (!conversationId || !normalizedSubject) {
+      return;
+    }
+    const existingIndex = historyItems.findIndex(
+      item => item.id === conversationId,
+    );
+    if (existingIndex >= 0) {
+      return;
+    }
+
+    const nextItems = [
+      {
+        id: conversationId,
+        subject: normalizedSubject,
+        updatedAt: new Date().toISOString(),
+      },
+      ...historyItems,
+    ].slice(0, MAX_HISTORY_ITEMS);
+
+    setHistoryItems(nextItems);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(historyStorageKey, JSON.stringify(nextItems));
+    }
+  };
+
+  const openHistoryConversation = (conversationId: string) => {
+    setHomeInlineQaConversationId?.(conversationId);
+    triggerHomeInlineQa?.('chat', { reset: false });
+  };
+
+  const handleNewConversation = () => {
+    setHomeInlineQaConversationId?.('');
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete('ask');
+    window.history.replaceState(
+      null,
+      '',
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+    );
+    triggerHomeInlineQa?.('chat');
+  };
+
+  useEffect(() => {
+    if (!incomingConversationId || homeInlineQaConversationId) {
+      return;
+    }
+
+    setHomeInlineQaConversationId?.(incomingConversationId);
+
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete('cid');
+    window.history.replaceState(
+      null,
+      '',
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+    );
+  }, [
+    homeInlineQaConversationId,
+    incomingConversationId,
+    setHomeInlineQaConversationId,
+  ]);
 
   useEffect(() => {
     if (homeInlineQaMode) {
@@ -129,7 +231,6 @@ const HomeInlineQaPanel = () => {
     closeHomeInlineQa?.();
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.delete('ask');
-    currentUrl.searchParams.delete('cid');
     window.history.replaceState(
       null,
       '',
@@ -139,6 +240,73 @@ const HomeInlineQaPanel = () => {
 
   if (!visible) {
     return null;
+  }
+
+  if (!homeInlineQaOpen && hasActiveConversation) {
+    return (
+      <Box
+        ref={panelRef}
+        sx={{
+          width: '100%',
+          px: { xs: 2, md: 4 },
+          pb: { xs: 4, md: 6 },
+        }}
+      >
+        <Stack
+          sx={theme => ({
+            maxWidth: 1200,
+            mx: 'auto',
+            borderRadius: '18px',
+            px: { xs: 2, md: 3 },
+            py: { xs: 1.5, md: 2 },
+            backgroundColor: alpha(theme.palette.background.paper, 0.86),
+            border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
+            boxShadow: `0 14px 36px ${alpha(theme.palette.common.black, 0.08)}`,
+            backdropFilter: 'blur(8px)',
+          })}
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent='space-between'
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          gap={1.5}
+        >
+          <Typography color='text.secondary' sx={{ fontSize: 14 }}>
+            问答区已收起，可随时重新展开查看上一轮回答。
+          </Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+            {historyItems.slice(0, 3).map(item => (
+              <Button
+                key={item.id}
+                variant='text'
+                color='inherit'
+                onClick={() => openHistoryConversation(item.id)}
+                sx={{
+                  maxWidth: 220,
+                  justifyContent: 'flex-start',
+                  textTransform: 'none',
+                  color: 'text.secondary',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {item.subject}
+              </Button>
+            ))}
+            <Button
+              variant='outlined'
+              onClick={() => expandHomeInlineQa?.()}
+              sx={{
+                borderRadius: '999px',
+                px: 2,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              重新展开问答区
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
+    );
   }
 
   return (
@@ -176,7 +344,8 @@ const HomeInlineQaPanel = () => {
       <Box
         sx={theme => ({
           '@media (prefers-reduced-motion: no-preference)': {
-            animation: 'home-inline-qa-fade-in 420ms cubic-bezier(0.22, 1, 0.36, 1)',
+            animation:
+              'home-inline-qa-fade-in 420ms cubic-bezier(0.22, 1, 0.36, 1)',
           },
           '@keyframes home-inline-qa-fade-in': {
             '0%': {
@@ -209,192 +378,291 @@ const HomeInlineQaPanel = () => {
           },
         })}
       >
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          justifyContent='space-between'
-          gap={2}
+        <Box
           sx={{
-            px: { xs: 2, md: 4 },
-            pt: { xs: 2.5, md: 4 },
-            pb: { xs: 2, md: 2.5 },
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '260px minmax(0, 1fr)' },
+            gap: { xs: 2, md: 0 },
             position: 'relative',
             zIndex: 1,
-            '@media (prefers-reduced-motion: no-preference)': {
-              animation:
-                'home-inline-qa-rise-in 520ms cubic-bezier(0.22, 1, 0.36, 1)',
-            },
-            '@keyframes home-inline-qa-rise-in': {
-              '0%': {
-                opacity: 0,
-                transform: 'translateY(18px)',
-              },
-              '100%': {
-                opacity: 1,
-                transform: 'translateY(0)',
-              },
-            },
           }}
         >
-          <Stack gap={1}>
-            <Chip
-              label='AI Assistant'
-              color='primary'
-              size='small'
-              sx={{
-                width: 'fit-content',
-                borderRadius: '999px',
-                px: 0.5,
-                fontWeight: 600,
-              }}
-            />
-            <Typography
-              variant='h5'
-              sx={{
-                fontSize: { xs: 24, md: 34 },
-                lineHeight: 1.15,
-                fontWeight: 700,
-                maxWidth: 560,
-              }}
-            >
-              在首页直接发起问答与文档检索
-            </Typography>
-            <Typography
-              variant='body2'
-              color='text.secondary'
-              sx={{ maxWidth: 620, fontSize: { xs: 14, md: 15 } }}
-            >
-              顶部搜索和 Banner 搜索都会落在这里，连续追问、查看答案和切换文档检索都留在当前页面完成。
-            </Typography>
+          <Stack
+            sx={{
+              borderRight: {
+                xs: 'none',
+                md: theme =>
+                  `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
+              },
+              px: { xs: 2, md: 2 },
+              pt: { xs: 2.5, md: 3 },
+              pb: { xs: 0, md: 3 },
+              minWidth: 0,
+              '@media (prefers-reduced-motion: no-preference)': {
+                animation:
+                  'home-inline-qa-rise-in 520ms cubic-bezier(0.22, 1, 0.36, 1)',
+              },
+              '@keyframes home-inline-qa-rise-in': {
+                '0%': {
+                  opacity: 0,
+                  transform: 'translateY(18px)',
+                },
+                '100%': {
+                  opacity: 1,
+                  transform: 'translateY(0)',
+                },
+              },
+            }}
+          >
+            <Stack gap={2}>
+              <Button
+                variant='contained'
+                onClick={handleNewConversation}
+                sx={{
+                  textTransform: 'none',
+                  borderRadius: '14px',
+                  justifyContent: 'flex-start',
+                  px: 2,
+                  py: 1.1,
+                  fontWeight: 600,
+                  boxShadow: 'none',
+                }}
+              >
+                新对话
+              </Button>
+              <Stack gap={1}>
+                <Typography
+                  variant='body2'
+                  color='text.secondary'
+                  sx={{ px: 0.5, fontWeight: 500 }}
+                >
+                  历史对话
+                </Typography>
+                {historyItems.length === 0 && (
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 1.5,
+                      borderRadius: '14px',
+                      color: 'text.disabled',
+                      bgcolor: theme =>
+                        alpha(theme.palette.background.default, 0.46),
+                      border: theme =>
+                        `1px dashed ${alpha(theme.palette.text.primary, 0.08)}`,
+                    }}
+                  >
+                    <Typography variant='body2' sx={{ fontSize: 13 }}>
+                      暂无历史会话
+                    </Typography>
+                  </Box>
+                )}
+                <Stack
+                  gap={0.75}
+                  sx={{ maxHeight: { md: 560 }, overflowY: 'auto' }}
+                >
+                  {historyItems.map(item => (
+                    <Button
+                      key={item.id}
+                      variant='text'
+                      color='inherit'
+                      onClick={() => openHistoryConversation(item.id)}
+                      sx={theme => ({
+                        justifyContent: 'flex-start',
+                        alignItems: 'flex-start',
+                        flexDirection: 'column',
+                        gap: 0.25,
+                        textTransform: 'none',
+                        px: 1.25,
+                        py: 1.1,
+                        borderRadius: '14px',
+                        border: `1px solid ${
+                          activeConversationId === item.id
+                            ? alpha(theme.palette.primary.main, 0.26)
+                            : alpha(theme.palette.text.primary, 0.06)
+                        }`,
+                        bgcolor:
+                          activeConversationId === item.id
+                            ? alpha(theme.palette.primary.main, 0.1)
+                            : alpha(theme.palette.background.default, 0.36),
+                        color: 'text.primary',
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.12),
+                          borderColor: alpha(theme.palette.primary.main, 0.24),
+                        },
+                      })}
+                    >
+                      <Typography
+                        component='span'
+                        sx={{
+                          width: '100%',
+                          textAlign: 'left',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          fontSize: 13,
+                          fontWeight:
+                            activeConversationId === item.id ? 600 : 500,
+                        }}
+                      >
+                        {item.subject}
+                      </Typography>
+                      <Typography
+                        component='span'
+                        color='text.secondary'
+                        sx={{ fontSize: 11 }}
+                      >
+                        {new Date(item.updatedAt).toLocaleString('zh-CN', {
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Typography>
+                    </Button>
+                  ))}
+                </Stack>
+              </Stack>
+            </Stack>
           </Stack>
-          <StyledTabs
-            value={searchMode}
-            onChange={(_, value) => {
-              setSearchMode(value as 'chat' | 'search');
-            }}
-            variant='scrollable'
-            scrollButtons={false}
+
+          <Stack
             sx={{
-              bgcolor: theme => alpha(theme.palette.background.paper, 0.72),
-              backdropFilter: 'blur(10px)',
-            }}
-          >
-            <StyledTab
-              label={
-                <Stack direction='row' gap={0.5} alignItems='center'>
-                  <IconZhinengwenda sx={{ fontSize: 16 }} />
-                  {!mobile && <span>智能问答</span>}
-                </Stack>
-              }
-              value='chat'
-            />
-            <StyledTab
-              label={
-                <Stack direction='row' gap={0.5} alignItems='center'>
-                  <IconJinsousuo sx={{ fontSize: 16 }} />
-                  {!mobile && <span>仅搜索文档</span>}
-                </Stack>
-              }
-              value='search'
-            />
-          </StyledTabs>
-        </Stack>
-        <Stack
-          direction='row'
-          justifyContent='flex-end'
-          sx={{
-            px: { xs: 2, md: 4 },
-            pb: { xs: 1, md: 0 },
-            position: 'relative',
-            zIndex: 1,
-          }}
-        >
-          <Button
-            variant='text'
-            color='inherit'
-            onClick={handleClose}
-            sx={{
-              borderRadius: '999px',
-              color: 'text.secondary',
-              px: 1.5,
-              '&:hover': {
-                bgcolor: theme => alpha(theme.palette.text.primary, 0.05),
-              },
-            }}
-          >
-            收起问答区
-          </Button>
-        </Stack>
-        <Box
-          sx={{
-            px: { xs: 2, md: 4 },
-            pb: { xs: 2, md: 4 },
-            flex: 1,
-            display: searchMode === 'chat' ? 'flex' : 'none',
-            flexDirection: 'column',
-            position: 'relative',
-            zIndex: 1,
-            '@media (prefers-reduced-motion: no-preference)': {
-              animation:
-                'home-inline-qa-content-in 620ms cubic-bezier(0.22, 1, 0.36, 1)',
-            },
-            '@keyframes home-inline-qa-content-in': {
-              '0%': {
-                opacity: 0,
-                transform: 'translateY(24px)',
-              },
-              '100%': {
-                opacity: 1,
-                transform: 'translateY(0)',
-              },
-            },
-          }}
-        >
-          <AiQaContent
-            key={`home-chat-${homeInlineQaRequestKey}`}
-            hotSearch={hotSearch}
-            placeholder={placeholder}
-            inputRef={aiQaInputRef}
-          />
-        </Box>
-        <Box
-          sx={{
-            px: { xs: 2, md: 4 },
-            pb: { xs: 2, md: 4 },
-            flex: 1,
-            display: searchMode === 'search' ? 'flex' : 'none',
-            flexDirection: 'column',
-            position: 'relative',
-            zIndex: 1,
-            '@media (prefers-reduced-motion: no-preference)': {
-              animation:
-                'home-inline-qa-content-in 620ms cubic-bezier(0.22, 1, 0.36, 1)',
-            },
-          }}
-        >
-          <SearchDocContent
-            key={`home-search-${homeInlineQaRequestKey}`}
-            inputRef={inputRef}
-            placeholder={placeholder}
-          />
-        </Box>
-        {!kbDetail?.settings?.conversation_setting?.copyright_hide_enabled && (
-          <Box
-            sx={{
+              minWidth: 0,
               px: { xs: 2, md: 4 },
-              pb: { xs: 2.5, md: 3.5 },
-              display: 'flex',
-              justifyContent: 'center',
-              position: 'relative',
-              zIndex: 1,
+              pt: { xs: 0, md: 3 },
+              pb: { xs: 2, md: 3 },
+              '@media (prefers-reduced-motion: no-preference)': {
+                animation:
+                  'home-inline-qa-content-in 620ms cubic-bezier(0.22, 1, 0.36, 1)',
+              },
+              '@keyframes home-inline-qa-content-in': {
+                '0%': {
+                  opacity: 0,
+                  transform: 'translateY(24px)',
+                },
+                '100%': {
+                  opacity: 1,
+                  transform: 'translateY(0)',
+                },
+              },
             }}
           >
-            <Typography variant='caption' color='text.disabled'>
-              {kbDetail?.settings?.conversation_setting?.copyright_info ||
-                '本网站由 PandaWiki 提供技术支持'}
-            </Typography>
-          </Box>
-        )}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              alignItems={{ xs: 'stretch', sm: 'center' }}
+              justifyContent='space-between'
+              gap={1.5}
+              sx={{ pb: 2 }}
+            >
+              <StyledTabs
+                value={searchMode}
+                onChange={(_, value) => {
+                  setSearchMode(value as 'chat' | 'search');
+                }}
+                variant='scrollable'
+                scrollButtons={false}
+                sx={{
+                  width: 'fit-content',
+                  bgcolor: theme => alpha(theme.palette.background.paper, 0.72),
+                  backdropFilter: 'blur(10px)',
+                }}
+              >
+                <StyledTab
+                  label={
+                    <Stack direction='row' gap={0.5} alignItems='center'>
+                      <IconZhinengwenda sx={{ fontSize: 16 }} />
+                      {!mobile && <span>智能问答</span>}
+                    </Stack>
+                  }
+                  value='chat'
+                />
+                <StyledTab
+                  label={
+                    <Stack direction='row' gap={0.5} alignItems='center'>
+                      <IconJinsousuo sx={{ fontSize: 16 }} />
+                      {!mobile && <span>仅搜索文档</span>}
+                    </Stack>
+                  }
+                  value='search'
+                />
+              </StyledTabs>
+              <Button
+                variant='text'
+                color='inherit'
+                onClick={handleClose}
+                sx={{
+                  alignSelf: { xs: 'flex-end', sm: 'center' },
+                  borderRadius: '999px',
+                  color: 'text.secondary',
+                  px: 1.5,
+                  '&:hover': {
+                    bgcolor: theme => alpha(theme.palette.text.primary, 0.05),
+                  },
+                }}
+              >
+                收起问答区
+              </Button>
+            </Stack>
+
+            <Divider
+              sx={{
+                borderColor: theme => alpha(theme.palette.text.primary, 0.08),
+                mb: 2,
+              }}
+            />
+
+            <Box
+              sx={{
+                flex: 1,
+                display: searchMode === 'chat' ? 'flex' : 'none',
+                flexDirection: 'column',
+                minWidth: 0,
+              }}
+            >
+              <AiQaContent
+                key={`home-chat-${homeInlineQaRequestKey}`}
+                hotSearch={hotSearch}
+                placeholder={placeholder}
+                inputRef={aiQaInputRef}
+                onConversationResolved={upsertHistoryItem}
+                activeConversationId={homeInlineQaConversationId}
+                onConversationIdChange={setHomeInlineQaConversationId}
+                persistConversationInUrl={false}
+              />
+            </Box>
+
+            <Box
+              sx={{
+                flex: 1,
+                display: searchMode === 'search' ? 'flex' : 'none',
+                flexDirection: 'column',
+                minWidth: 0,
+              }}
+            >
+              <SearchDocContent
+                key={`home-search-${homeInlineQaRequestKey}`}
+                inputRef={inputRef}
+                placeholder={placeholder}
+              />
+            </Box>
+
+            {!kbDetail?.settings?.conversation_setting
+              ?.copyright_hide_enabled && (
+              <Box
+                sx={{
+                  pt: 2,
+                  display: 'flex',
+                  justifyContent: 'center',
+                }}
+              >
+                <Typography variant='caption' color='text.disabled'>
+                  {kbDetail?.settings?.conversation_setting?.copyright_info ||
+                    '本网站由 PandaWiki 提供技术支持'}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
+        </Box>
       </Box>
     </Box>
   );

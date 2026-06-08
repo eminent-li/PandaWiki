@@ -1,0 +1,570 @@
+PandaWiki 去除 300 文档/节点限制修改与部署记录
+生成时间: 2026-06-05
+仓库路径: C:\D\WIP\pandawiki\PandaWiki
+
+============================================================
+一、背景与目标
+============================================================
+
+目标:
+1. 分析 PandaWiki 开源版为什么只有 300 个文件/文档限制。
+2. 给出最小改动方案，去除该限制。
+3. 在本地修改代码并验证。
+4. 将修改推送到 GitHub fork。
+5. 在已部署 PandaWiki 的主机上，使用修改后的版本替换官方镜像，取消 300 限制。
+
+用户 fork 仓库:
+https://github.com/eminent-li/PandaWiki.git
+
+
+============================================================
+二、代码分析结论
+============================================================
+
+结论:
+PandaWiki 开源版“300 个文件”限制不是 Git 同步、数据库、RAG 或向量库的自然上限，而是代码里显式写死的授权限制。
+
+关键发现:
+
+1. 前端展示层定义开源版每个 Wiki 文档数为 300
+文件:
+web/admin/src/constant/version.ts
+
+原始关键配置:
+  docCountPerWiki: 300
+
+2. 后端默认授权限制把 MaxNode 写成 300
+文件:
+backend/domain/license.go
+
+原始关键配置:
+  MaxNode: 300
+
+3. 创建节点时后端把 MaxNode 注入请求并在仓储层做硬拦截
+文件:
+backend/handler/v1/node.go
+  req.MaxNode = domain.GetBaseEditionLimitation(ctx).MaxNode
+
+文件:
+backend/repo/pg/node.go
+  if count >= int64(req.MaxNode) {
+      return domain.ErrMaxNodeLimitReached
+  }
+
+4. 限制统计的是节点总数，不只是“上传文件数”
+文件:
+backend/domain/node.go
+
+NodeType 包括:
+  NodeTypeFolder = 1
+  NodeTypeDocument = 2
+
+仓储层计数只按 kb_id 统计，不区分类型，所以文件夹和文档都占额度。
+
+5. 更深一层原因
+文件:
+backend/domain/license.go
+
+GetBaseEditionLimitation() 会从 context 中读取 edition_limitation，
+但仓库中没有任何地方把 ContextKeyEditionLimitation 写入 context，
+所以实际运行时总是回落到默认值:
+
+  MaxKb: 1
+  MaxAdmin: 1
+  MaxNode: 300
+
+
+============================================================
+三、最小改动方案
+============================================================
+
+采用方案:
+1. 将 MaxNode 默认值从 300 改为 0。
+2. 约定 MaxNode <= 0 表示不限。
+3. 仓储层仅在 MaxNode > 0 时执行数量限制。
+4. 前端开源版展示从 300 改为 Infinity。
+
+这样可以做到:
+1. 后端功能上去除限制。
+2. 前端显示与后端逻辑同步。
+3. 改动最小，不扩散到无关模块。
+
+
+============================================================
+四、实际代码修改内容
+============================================================
+
+修改文件 1:
+backend/domain/license.go
+
+修改前:
+  MaxNode                int   `json:"max_node"`                   // 单个知识库下文档数量
+  MaxNode:  300,
+
+修改后:
+  MaxNode                int   `json:"max_node"`                   // 单个知识库下节点数量，0 表示不限
+  MaxNode:  0,
+
+
+修改文件 2:
+backend/repo/pg/node.go
+
+修改前:
+  if count >= int64(req.MaxNode) {
+      return domain.ErrMaxNodeLimitReached
+  }
+
+修改后:
+  if req.MaxNode > 0 && count >= int64(req.MaxNode) {
+      return domain.ErrMaxNodeLimitReached
+  }
+
+
+修改文件 3:
+web/admin/src/constant/version.ts
+
+修改前:
+  docCountPerWiki: 300,
+
+修改后:
+  docCountPerWiki: Infinity,
+
+
+============================================================
+五、本地验证过程与结果
+============================================================
+
+1. 编辑器诊断检查
+结果:
+  backend/domain/license.go -> No errors found
+  backend/repo/pg/node.go -> No errors found
+  web/admin/src/constant/version.ts -> No errors found
+
+2. 本机 Go 环境排查
+最初 PowerShell 中直接执行 go build 失败:
+  go: The term 'go' is not recognized as a name of a cmdlet, function, script file, or executable program.
+
+后续定位到 Go 可执行文件路径:
+  C:\Program Files\Go\bin\go.exe
+
+3. 构建时出现工具链兼容问题
+系统默认 Go 版本:
+  go version go1.26.3 windows/amd64
+
+项目声明版本:
+  backend/go.mod -> go 1.24.3
+
+使用 go1.26.3 构建时报错:
+  # github.com/bytedance/sonic/internal/rt
+  C:\Users\emili8\go\pkg\mod\github.com\bytedance\sonic@v1.14.1\internal\rt\stubs.go:33:22: undefined: GoMapIterator
+  C:\Users\emili8\go\pkg\mod\github.com\bytedance\sonic@v1.14.1\internal\rt\stubs.go:36:54: undefined: GoMapIterator
+
+4. 切换到项目声明 toolchain 后构建成功
+执行命令:
+  Set-Location 'c:\D\WIP\pandawiki\PandaWiki\backend'
+  $env:GOTOOLCHAIN='go1.24.3'
+  & 'C:\Program Files\Go\bin\go.exe' build ./domain ./repo/pg
+  Write-Output "EXIT_CODE=$LASTEXITCODE"
+
+结果:
+  EXIT_CODE=0
+
+
+============================================================
+六、Git 推送记录
+============================================================
+
+远程仓库检查:
+  git remote -v
+
+输出:
+  origin  https://github.com/eminent-li/PandaWiki.git (fetch)
+  origin  https://github.com/eminent-li/PandaWiki.git (push)
+
+说明:
+  origin 已经是用户自己的 fork，无需再添加新远程。
+
+执行推送:
+  git push -u origin main
+
+输出:
+  info: please complete authentication in your browser...
+  Enumerating objects: 25, done.
+  Counting objects: 100% (25/25), done.
+  Delta compression using up to 14 threads
+  Compressing objects: 100% (13/13), done.
+  Writing objects: 100% (13/13), 1010 bytes | 505.00 KiB/s, done.
+  Total 13 (delta 12), reused 0 (delta 0), pack-reused 0 (from 0)
+  remote: Resolving deltas: 100% (12/12), completed with 12 local objects.
+  To https://github.com/eminent-li/PandaWiki.git
+     c1981c51..e3aca052  main -> main
+  branch 'main' set up to track 'origin/main'.
+
+推送结果:
+  成功推送到 fork 的 main 分支。
+
+
+============================================================
+七、部署环境信息
+============================================================
+
+部署目录:
+  /data/pandawiki
+
+线上运行中的容器清单:
+  panda-wiki-nginx      chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-nginx:v3.84.1
+  panda-wiki-consumer   chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-consumer:v3.84.1
+  panda-wiki-api        chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-api:v3.84.1
+  panda-wiki-raglite    chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/raglite:v2.17.0
+  panda-wiki-postgres   chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/postgres-zhparser:17.6-bookworm
+  panda-wiki-qdrant     chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-qdrant:v1.14.1
+  panda-wiki-redis      chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-redis:7.4.2-alpine
+  panda-wiki-app        chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-app:v3.84.1
+  panda-wiki-minio      chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
+  panda-wiki-caddy      chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-caddy:2.10-alpine
+  panda-wiki-crawler    chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/anydoc:v0.9.11
+  panda-wiki-nats       chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-nats:2.11.3-alpine
+
+docker compose working_dir:
+  /data/pandawiki
+
+compose 文件:
+  /data/pandawiki/docker-compose.yml
+
+api 对应的 compose service:
+  api
+
+
+============================================================
+八、部署策略选择过程
+============================================================
+
+约束条件:
+1. 开发机没有安装 Docker。
+2. 部署机已经安装 Docker，但没有安装 git。
+3. 两台主机都是 Windows，但部署机实际通过 Linux/WSL 环境管理 Docker。
+
+采用方案:
+1. 在开发机打包源码为 zip。
+2. 将 zip 拷贝到部署机。
+3. 在部署机解压源码。
+4. 直接在部署机使用 Docker 构建自定义镜像。
+5. 修改部署机 compose 文件，将 api 服务切换到本地自定义镜像。
+
+开发机打包命令:
+  Set-Location 'C:\D\WIP\pandawiki'
+  Compress-Archive -Path '.\PandaWiki\*' -DestinationPath '.\PandaWiki-remove-300.zip' -Force
+
+最终 zip 文件路径:
+  C:\D\PandaWiki-remove-300.zip
+
+部署机解压后源码目录:
+  /data/pandawiki/custom-src
+
+目录确认输出:
+  da@ITCNSHG-NB0297:/data/pandawiki/custom-src$ ls -lah
+  total 120K
+  drwxr-xr-x  7 root root 4.0K Jun  1 15:27 .
+  drwxr-xr-x  4 root root 4.0K Jun  1 15:24 ..
+  -rw-r--r--  1 root root   70 Jun  1 10:46 .gitattributes
+  drwxr-xr-x  4 root root 4.0K Jun  1 15:27 .github
+  -rw-r--r--  1 root root  595 Jun  1 10:46 .gitignore
+  -rw-r--r--  1 root root   96 Jun  1 10:46 .gitmodules
+  -rw-r--r--  1 root root 8.7K Jun  1 10:46 AGENTS.md
+  -rw-r--r--  1 root root 5.3K Jun  1 10:46 CODE_OF_CONDUCT.md
+  -rw-r--r--  1 root root 1.1K Jun  1 10:46 CONTRIBUTING.md
+  -rw-r--r--  1 root root  35K Jun  1 10:46 LICENSE
+  -rw-r--r--  1 root root 4.2K Jun  1 10:46 PROJECT_STRUCTURE.md
+  -rw-r--r--  1 root root 5.3K Jun  1 10:46 README.md
+  -rw-r--r--  1 root root  660 Jun  1 10:46 SECURITY.md
+  drwxr-xr-x 23 root root 4.0K Jun  1 15:27 backend
+  drwxr-xr-x  2 root root 4.0K Jun  1 15:27 images
+  drwxr-xr-x  3 root root 4.0K Jun  1 15:27 sdk
+  drwxr-xr-x  6 root root 4.0K Jun  1 15:27 web
+
+
+============================================================
+九、部署机构建 API 镜像过程与故障排查
+============================================================
+
+构建命令:
+  cd /data/pandawiki/custom-src/backend
+  sudo docker build -f Dockerfile.api -t local/panda-wiki-api:remove-300 .
+
+第一次构建耗时较长后失败，关键日志如下:
+
+  => CANCELED [api 2/6] RUN apk update ... 1279.8s
+  => ERROR [builder 4/6] RUN --mount=type=cache,target=/go/pkg/mod     go mod download 1261.9s
+
+  go: github.com/chaitin/ModelKit/v2@v2.13.3: read "https://proxy.golang.org/github.com/chaitin/%21model%21kit/v2/@v/v2.13.3.zip": read tcp ...:443: read: connection timed out
+  go: github.com/bytedance/sonic@v1.14.1: read "https://proxy.golang.org/github.com/bytedance/sonic/@v/v1.14.1.zip": read tcp ...:443: read: connection timed out
+  ... (多个 go module 下载超时)
+
+初步判断:
+  Docker build 阶段的 go mod download 访问 proxy.golang.org 时连接超时。
+
+进一步网络验证:
+
+宿主机测试:
+  curl -I https://github.com
+  返回 HTTP/2 200
+
+宿主机测试 proxy.golang.org:
+  curl -I https://proxy.golang.org
+  返回 HTTP/2 200
+
+Docker 容器内测试 proxy.golang.org:
+  sudo docker run --rm alpine:3.21 sh -c "apk add --no-cache curl >/dev/null && curl -I https://proxy.golang.org"
+  返回 HTTP/2 200
+
+结论:
+  不是“完全无法访问外网”，而是 build 过程中大量模块下载时连接稳定性不足。
+
+重试策略:
+  使用宿主机网络执行构建:
+    sudo docker build --network=host --progress=plain -f Dockerfile.api -t local/panda-wiki-api:remove-300 .
+
+最终构建成功，结尾日志如下:
+
+  #18 exporting to image
+  #18 exporting layers
+  #18 exporting layers 4.2s done
+  #18 exporting manifest sha256:213e19f98193644863f156c1d26c6bd55b2d2e714574c2fcd5bd71dc1c7e2676 0.0s done
+  #18 exporting config sha256:234a8c5e2a462930d127a4fe075d3567967422efeb4d6638ea5fc2cd745ae8b9 0.0s done
+  #18 exporting attestation manifest sha256:6e02f6fe314b44610e950d6de6e56d52857ed45c6c613fb5f59f149b67740577 0.0s done
+  #18 exporting manifest list sha256:0d5d899442d98f67bb761f74bfd6b622ea0eabf5463079da3c25363ba245d565
+  #18 exporting manifest list sha256:0d5d899442d98f67bb761f74bfd6b622ea0eabf5463079da3c25363ba245d565 0.0s done
+  #18 naming to docker.io/local/panda-wiki-api:remove-300 done
+  #18 unpacking to docker.io/local/panda-wiki-api:remove-300
+  #18 unpacking to docker.io/local/panda-wiki-api:remove-300 1.9s done
+  #18 DONE 6.3s
+
+构建前后主要区别:
+1. 失败版本停在 go mod download 阶段。
+2. 成功版本使用了 --network=host。
+3. 成功版本顺利完成了导出镜像并命名为 local/panda-wiki-api:remove-300。
+
+部署机镜像确认:
+  docker images | grep panda-wiki-api
+
+输出:
+  chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-api:v3.84.1   4c00df9f925a ...
+  local/panda-wiki-api:remove-300                                                 0d5d899442d9 ...
+
+
+============================================================
+十、compose 修改与服务切换过程
+============================================================
+
+先检查 compose 中 api 段，最初发现仍然指向官方镜像:
+
+  api:
+    container_name: panda-wiki-api
+    depends_on:
+      - postgres
+      - nats
+      - caddy
+      - raglite
+    restart: always
+    image: chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-api:v3.84.1
+    volumes:
+      - ./data/caddy/run:/app/run
+      - ./data/nginx/ssl:/app/etc/nginx/ssl
+      - ./data/conf/api:/data
+    environment:
+      - NATS_PASSWORD=${NATS_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SUBNET_PREFIX=${SUBNET_PREFIX}
+    networks:
+      panda-wiki:
+        ipv4_address: "${SUBNET_PREFIX:-169.254.15}.2"
+
+说明:
+  虽然本地镜像已经构建成功，但 compose 文件没改，所以运行中的容器依然是官方镜像。
+
+用户还检查了 consumer 段:
+
+  consumer:
+    container_name: panda-wiki-consumer
+    depends_on:
+      - nats
+      - api
+      - raglite
+    restart: always
+
+    image: chaitin-registry.cn-hangzhou.cr.aliyuncs.com/chaitin/panda-wiki-consumer:v3.84.1
+    environment:
+      - NATS_PASSWORD=${NATS_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - SUBNET_PREFIX=${SUBNET_PREFIX}
+    networks:
+      panda-wiki:
+        ipv4_address: "${SUBNET_PREFIX:-169.254.15}.3"
+
+结论:
+  consumer 配置是正常的，不需要改。
+
+随后修改 api 段为:
+
+  api:
+    container_name: panda-wiki-api
+    depends_on:
+      - postgres
+      - nats
+      - caddy
+      - raglite
+    restart: always
+    image: local/panda-wiki-api:remove-300
+    volumes:
+      - ./data/caddy/run:/app/run
+      - ./data/nginx/ssl:/app/etc/nginx/ssl
+      - ./data/conf/api:/data
+    environment:
+      - NATS_PASSWORD=${NATS_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SUBNET_PREFIX=${SUBNET_PREFIX}
+    networks:
+      panda-wiki:
+        ipv4_address: "${SUBNET_PREFIX:-169.254.15}.2"
+
+然后执行强制重建 api 服务:
+  cd /data/pandawiki
+  docker compose up -d --force-recreate api
+
+输出:
+  [+] up 7/7
+   ✔ Container panda-wiki-qdrant   Running
+   ✔ Container panda-wiki-postgres Running
+   ✔ Container panda-wiki-caddy    Running
+   ✔ Container panda-wiki-nats     Running
+   ✔ Container panda-wiki-minio    Running
+   ✔ Container panda-wiki-raglite  Running
+   ✔ Container panda-wiki-api      Started                                                                                                               11.9s
+
+切换后镜像检查:
+  docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep panda-wiki-api
+
+输出:
+  panda-wiki-api        local/panda-wiki-api:remove-300                                                                            Up 8 seconds
+
+
+============================================================
+十一、切换后的 API 日志
+============================================================
+
+切换后查看日志:
+  docker logs --tail 100 panda-wiki-api
+
+关键输出:
+  time=2026-06-01T08:49:35.176Z level=INFO msg="find migration" module=migration name=0001_migrate_node_version
+  time=2026-06-01T08:49:35.184Z level=INFO msg="skip migration" module=migration name=0001_migrate_node_version
+  time=2026-06-01T08:49:35.185Z level=INFO msg="find migration" module=migration name=0002_create_bot_auth
+  time=2026-06-01T08:49:35.185Z level=INFO msg="skip migration" module=migration name=0002_create_bot_auth
+  time=2026-06-01T08:49:35.185Z level=INFO msg="find migration" module=migration name=0003_fix_group_ids
+  time=2026-06-01T08:49:35.186Z level=INFO msg="skip migration" module=migration name=0003_fix_group_ids
+  time=2026-06-01T08:49:35.186Z level=INFO msg="find migration" module=migration name=0004_update_node_status_unreleased
+  time=2026-06-01T08:49:35.186Z level=INFO msg="skip migration" module=migration name=0004_update_node_status_unreleased
+  time=2026-06-01T08:49:35.187Z level=INFO msg="find migration" module=migration name=0005_create_first_navs
+  time=2026-06-01T08:49:35.187Z level=INFO msg="skip migration" module=migration name=0005_create_first_navs
+  time=2026-06-01T08:49:35.366Z level=INFO msg="Sentry initialized successfully"
+  time=2026-06-01T08:49:36.103Z level=INFO msg="Starting server on port 8000"
+
+结论:
+  迁移正常执行检查并跳过已有迁移，API 服务正常启动，没有发现启动错误。
+
+
+============================================================
+十二、部署结果结论
+============================================================
+
+最终结果:
+1. 后端 api 服务已经切换到自定义镜像 local/panda-wiki-api:remove-300。
+2. 去除 300 限制的后端代码已实际生效。
+3. consumer、app、raglite、postgres、qdrant、redis、minio、caddy、crawler、nats 均未做无关替换。
+4. 功能层面已经完成“去除 300 文档/节点限制”的部署。
+
+当前仍未处理的仅有一项:
+  管理后台前端展示仍可能继续显示“开源版 300 篇文档”，因为尚未替换 panda-wiki-nginx。
+
+这不影响实际功能，只影响管理后台展示。
+
+
+============================================================
+十三、最终状态摘要
+============================================================
+
+代码修改:
+  已完成
+
+本地构建验证:
+  已完成并通过
+
+GitHub fork 推送:
+  已完成并成功
+
+部署机构建自定义 api 镜像:
+  已完成并成功
+
+部署机 compose 切换 api:
+  已完成并成功
+
+部署后日志检查:
+  已完成并正常
+
+最终功能状态:
+  300 文档/节点限制已去除
+
+
+============================================================
+十四、涉及的核心命令汇总
+============================================================
+
+本地打包:
+  Set-Location 'C:\D\WIP\pandawiki'
+  Compress-Archive -Path '.\PandaWiki\*' -DestinationPath '.\PandaWiki-remove-300.zip' -Force
+
+本地验证 Go 构建:
+  Set-Location 'c:\D\WIP\pandawiki\PandaWiki\backend'
+  $env:GOTOOLCHAIN='go1.24.3'
+  & 'C:\Program Files\Go\bin\go.exe' build ./domain ./repo/pg
+
+Git 推送:
+  git push -u origin main
+
+部署机构建镜像:
+  cd /data/pandawiki/custom-src/backend
+  sudo docker build --network=host --progress=plain -f Dockerfile.api -t local/panda-wiki-api:remove-300 .
+
+部署机检查 compose 对应 service:
+  docker inspect panda-wiki-api --format '{{ index .Config.Labels "com.docker.compose.service" }}'
+  docker inspect panda-wiki-api --format '{{ index .Config.Labels "com.docker.compose.project.config_files" }}'
+
+部署机重建 api:
+  cd /data/pandawiki
+  docker compose up -d --force-recreate api
+
+部署机验证镜像:
+  docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep panda-wiki-api
+
+部署机验证日志:
+  docker logs --tail 100 panda-wiki-api
+
+
+============================================================
+十五、备注
+============================================================
+
+1. 这次部署没有替换 panda-wiki-nginx，因此管理后台前端显示可能仍保留“300 文档”的说明。
+2. 如需前端展示也同步，需要额外构建 web/admin 并替换 nginx 镜像。
+3. 如后续再次运行官方 manager.sh 或官方镜像升级流程，可能会把 api 服务重新切回官方镜像，需要注意保留自定义 compose 配置。
