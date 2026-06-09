@@ -306,27 +306,6 @@ const HomeInlineQaPanel = () => {
         py: { xs: 1.5, md: 2.5 },
         position: 'relative',
         overflow: 'hidden',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          inset: '10% auto auto 8%',
-          width: { xs: 180, md: 260 },
-          height: { xs: 180, md: 260 },
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.16)} 0%, transparent 70%)`,
-          pointerEvents: 'none',
-        },
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          right: '6%',
-          bottom: '2%',
-          width: { xs: 220, md: 320 },
-          height: { xs: 220, md: 320 },
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${alpha(theme.palette.secondary.main, 0.12)} 0%, transparent 68%)`,
-          pointerEvents: 'none',
-        },
       })}
     >
       <Box
