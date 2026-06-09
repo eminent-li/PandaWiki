@@ -77,7 +77,6 @@ const HomeInlineQaPanel = () => {
     homeInlineQaConversationId,
     triggerHomeInlineQa,
     expandHomeInlineQa,
-    closeHomeInlineQa,
     setHomeInlineQaConversationId,
   } = useStore();
   const searchParams = useSearchParams();
@@ -227,17 +226,6 @@ const HomeInlineQaPanel = () => {
     }, 100);
   }, [visible, searchMode, homeInlineQaRequestKey]);
 
-  const handleClose = () => {
-    closeHomeInlineQa?.();
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.delete('ask');
-    window.history.replaceState(
-      null,
-      '',
-      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
-    );
-  };
-
   if (!visible) {
     return null;
   }
@@ -363,19 +351,7 @@ const HomeInlineQaPanel = () => {
           minHeight: { xs: 'calc(100vh - 16px)', md: 'calc(100vh - 24px)' },
           height: { xs: 'calc(100vh - 16px)', md: 'calc(100vh - 24px)' },
           position: 'relative',
-          background: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.96)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
-          backdropFilter: 'blur(10px)',
-          borderRadius: { xs: '22px', md: '28px' },
-          boxShadow: `0 28px 80px ${alpha(theme.palette.common.black, 0.1)}`,
-          border: `1px solid ${alpha(theme.palette.text.primary, 0.06)}`,
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, transparent 35%, transparent 65%, ${alpha(theme.palette.secondary.main, 0.06)} 100%)`,
-            pointerEvents: 'none',
-          },
+          background: 'transparent',
         })}
       >
         <Box
@@ -392,10 +368,10 @@ const HomeInlineQaPanel = () => {
         >
           <Stack
             sx={theme => ({
-              border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
-              backgroundColor: alpha(theme.palette.background.default, 0.34),
+              border: `1px solid ${alpha(theme.palette.text.primary, 0.05)}`,
+              backgroundColor: alpha(theme.palette.background.default, 0.24),
               backdropFilter: 'blur(14px)',
-              borderRadius: { xs: '20px', md: '24px' },
+              borderRadius: { xs: '18px', md: '20px' },
               px: { xs: 1.5, md: 2 },
               pt: { xs: 1.5, md: 2 },
               pb: { xs: 1.5, md: 2 },
@@ -482,20 +458,20 @@ const HomeInlineQaPanel = () => {
                         textTransform: 'none',
                         px: 1.25,
                         py: 1.1,
-                        borderRadius: '14px',
+                        borderRadius: '12px',
                         border: `1px solid ${
                           activeConversationId === item.id
                             ? alpha(theme.palette.primary.main, 0.26)
-                            : alpha(theme.palette.text.primary, 0.06)
+                            : 'transparent'
                         }`,
                         bgcolor:
                           activeConversationId === item.id
                             ? alpha(theme.palette.primary.main, 0.1)
-                            : alpha(theme.palette.background.default, 0.36),
+                            : 'transparent',
                         color: 'text.primary',
                         '&:hover': {
-                          bgcolor: alpha(theme.palette.primary.main, 0.12),
-                          borderColor: alpha(theme.palette.primary.main, 0.24),
+                          bgcolor: alpha(theme.palette.background.paper, 0.3),
+                          borderColor: alpha(theme.palette.text.primary, 0.08),
                         },
                       })}
                     >
@@ -561,7 +537,7 @@ const HomeInlineQaPanel = () => {
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               alignItems={{ xs: 'stretch', sm: 'center' }}
-              justifyContent='space-between'
+              justifyContent='flex-start'
               gap={1.5}
               sx={{ pb: 2 }}
             >
@@ -597,22 +573,6 @@ const HomeInlineQaPanel = () => {
                   value='search'
                 />
               </StyledTabs>
-              <Button
-                variant='text'
-                color='inherit'
-                onClick={handleClose}
-                sx={{
-                  alignSelf: { xs: 'flex-end', sm: 'center' },
-                  borderRadius: '999px',
-                  color: 'text.secondary',
-                  px: 1.5,
-                  '&:hover': {
-                    bgcolor: theme => alpha(theme.palette.text.primary, 0.05),
-                  },
-                }}
-              >
-                收起问答区
-              </Button>
             </Stack>
 
             <Divider
@@ -651,11 +611,9 @@ const HomeInlineQaPanel = () => {
                 display: searchMode === 'search' ? 'flex' : 'none',
                 flexDirection: 'column',
                 minWidth: 0,
-                borderRadius: '22px',
-                border: theme =>
-                  `1px solid ${alpha(theme.palette.text.primary, 0.06)}`,
+                borderRadius: '18px',
                 backgroundColor: theme =>
-                  alpha(theme.palette.background.default, 0.3),
+                  alpha(theme.palette.background.default, 0.22),
                 px: { xs: 1.5, md: 3 },
                 py: { xs: 1.5, md: 2.5 },
               }}
