@@ -182,6 +182,7 @@ const AiQaContent: React.FC<{
   activeConversationId?: string;
   onConversationIdChange?: (conversationId?: string) => void;
   persistConversationInUrl?: boolean;
+  layoutMode?: 'modal' | 'workspace';
 }> = ({
   hotSearch,
   placeholder,
@@ -190,6 +191,7 @@ const AiQaContent: React.FC<{
   activeConversationId,
   onConversationIdChange,
   persistConversationInUrl = true,
+  layoutMode = 'modal',
 }) => {
   const sseClientRef = useRef<SSEClient<{
     type: string;
@@ -697,6 +699,8 @@ const AiQaContent: React.FC<{
   };
 
   const { mobile = false, kbDetail, qaModalOpen } = useStore();
+  const isWorkspaceLayout = layoutMode === 'workspace';
+  const hasConversation = conversation.length > 0;
 
   const isFeedbackEnabled =
     // @ts-ignore
@@ -935,98 +939,220 @@ const AiQaContent: React.FC<{
   }, [qaModalOpen, conversation]);
 
   return (
-    <StyledMainContainer className={palette.mode === 'dark' ? 'md-dark' : ''}>
+    <StyledMainContainer
+      className={palette.mode === 'dark' ? 'md-dark' : ''}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        height: '100%',
+      }}
+    >
       {/* 无对话时显示欢迎界面 */}
-      {conversation.length === 0 && (
+      {!hasConversation && (
         <Box
           sx={{
             flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
+            minHeight: 0,
+            display: 'grid',
+            gridTemplateRows: isWorkspaceLayout ? '1fr auto' : '1fr',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            pb: 5,
+            gap: isWorkspaceLayout ? 3 : 4,
+            px: isWorkspaceLayout ? { xs: 1, md: 3 } : 0,
+            pt: isWorkspaceLayout ? { xs: 2, md: 5 } : 0,
+            pb: isWorkspaceLayout ? { xs: 2, md: 3 } : 5,
           }}
         >
-          {/* Logo区域 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 8 }}>
-            <Image
-              src={getImagePath(kbDetail?.settings?.icon || Logo.src, basePath)}
-              alt='logo'
-              width={46}
-              height={46}
-              unoptimized
-              style={{
-                objectFit: 'contain',
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: isWorkspaceLayout ? 1120 : '100%',
+              mx: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: isWorkspaceLayout ? 5 : 4,
+            }}
+          >
+            {/* Logo区域 */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                my: isWorkspaceLayout ? { xs: 2, md: 4 } : 8,
               }}
-            />
-            <Typography
-              variant='h6'
-              sx={{ fontSize: 32, color: 'text.primary', fontWeight: 700 }}
             >
-              {kbDetail?.settings?.title}
-            </Typography>
-          </Box>
-
-          {/* 热门搜索区域 */}
-          {hotSearch.length > 0 && (
-            <Box sx={{ width: '100%' }}>
-              <Box
+              <Image
+                src={getImagePath(kbDetail?.settings?.icon || Logo.src, basePath)}
+                alt='logo'
+                width={46}
+                height={46}
+                unoptimized
+                style={{
+                  objectFit: 'contain',
+                }}
+              />
+              <Typography
+                variant='h6'
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  mb: 2,
+                  fontSize: isWorkspaceLayout ? { xs: 28, md: 44 } : 32,
+                  color: 'text.primary',
+                  fontWeight: 700,
+                  letterSpacing: '-0.02em',
                 }}
               >
-                <Typography
+                {kbDetail?.settings?.title}
+              </Typography>
+            </Box>
+
+            {/* 热门搜索区域 */}
+            {hotSearch.length > 0 && (
+              <Box sx={{ width: '100%', maxWidth: isWorkspaceLayout ? 1120 : '100%' }}>
+                <Box
                   sx={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: 'primary.main',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 0.5,
+                    justifyContent: 'space-between',
+                    mb: 2,
                   }}
                 >
-                  <IconXingxing sx={{ fontSize: 14 }} />
-                  大家都在搜什么?
-                </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: 'primary.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                    }}
+                  >
+                    <IconXingxing sx={{ fontSize: 14 }} />
+                    大家都在搜什么?
+                  </Typography>
+                </Box>
+
+                {/* 热门搜索列表 - 两列布局 */}
+                <StyledHotSearchContainer
+                  sx={
+                    isWorkspaceLayout
+                      ? {
+                          display: 'grid',
+                          gridTemplateColumns: {
+                            xs: '1fr',
+                            md: 'repeat(2, minmax(0, 1fr))',
+                          },
+                          gap: 2,
+                        }
+                      : undefined
+                  }
+                >
+                  {/* 左列 */}
+                  <StyledHotSearchColumn
+                    sx={
+                      isWorkspaceLayout
+                        ? {
+                            px: 2,
+                            py: 2,
+                            borderLeft: 'none',
+                            borderRadius: '18px',
+                            backgroundColor: theme =>
+                              alpha(theme.palette.background.default, 0.34),
+                            border: theme =>
+                              `1px solid ${alpha(theme.palette.text.primary, 0.06)}`,
+                            gap: 1.25,
+                          }
+                        : undefined
+                    }
+                  >
+                    {hotSearch
+                      .filter((_, index) => index % 2 === 0)
+                      .map((suggestion, index) => (
+                        <StyledHotSearchColumnItem
+                          key={index * 2}
+                          onClick={() => onSuggestionClick(suggestion)}
+                          sx={
+                            isWorkspaceLayout
+                              ? {
+                                  minHeight: 40,
+                                  px: 1,
+                                  borderRadius: '12px',
+                                  fontSize: 14,
+                                  color: 'text.primary',
+                                  backgroundColor: theme =>
+                                    alpha(
+                                      theme.palette.background.paper,
+                                      0.38,
+                                    ),
+                                  '&:hover': {
+                                    color: 'primary.main',
+                                    backgroundColor: theme =>
+                                      alpha(theme.palette.primary.main, 0.08),
+                                  },
+                                }
+                              : undefined
+                          }
+                        >
+                          • {suggestion}
+                        </StyledHotSearchColumnItem>
+                      ))}
+                  </StyledHotSearchColumn>
+
+                  {/* 右列 */}
+                  <StyledHotSearchColumn
+                    sx={
+                      isWorkspaceLayout
+                        ? {
+                            px: 2,
+                            py: 2,
+                            borderLeft: 'none',
+                            borderRadius: '18px',
+                            backgroundColor: theme =>
+                              alpha(theme.palette.background.default, 0.34),
+                            border: theme =>
+                              `1px solid ${alpha(theme.palette.text.primary, 0.06)}`,
+                            gap: 1.25,
+                          }
+                        : undefined
+                    }
+                  >
+                    {hotSearch
+                      .filter((_, index) => index % 2 === 1)
+                      .map((suggestion, index) => (
+                        <StyledHotSearchColumnItem
+                          key={index * 2 + 1}
+                          onClick={() => onSuggestionClick(suggestion)}
+                          sx={
+                            isWorkspaceLayout
+                              ? {
+                                  minHeight: 40,
+                                  px: 1,
+                                  borderRadius: '12px',
+                                  fontSize: 14,
+                                  color: 'text.primary',
+                                  backgroundColor: theme =>
+                                    alpha(
+                                      theme.palette.background.paper,
+                                      0.38,
+                                    ),
+                                  '&:hover': {
+                                    color: 'primary.main',
+                                    backgroundColor: theme =>
+                                      alpha(theme.palette.primary.main, 0.08),
+                                  },
+                                }
+                              : undefined
+                          }
+                        >
+                          • {suggestion}
+                        </StyledHotSearchColumnItem>
+                      ))}
+                  </StyledHotSearchColumn>
+                </StyledHotSearchContainer>
               </Box>
-
-              {/* 热门搜索列表 - 两列布局 */}
-              <StyledHotSearchContainer>
-                {/* 左列 */}
-                <StyledHotSearchColumn>
-                  {hotSearch
-                    .filter((_, index) => index % 2 === 0)
-                    .map((suggestion, index) => (
-                      <StyledHotSearchColumnItem
-                        key={index * 2}
-                        onClick={() => onSuggestionClick(suggestion)}
-                      >
-                        • {suggestion}
-                      </StyledHotSearchColumnItem>
-                    ))}
-                </StyledHotSearchColumn>
-
-                {/* 右列 */}
-                <StyledHotSearchColumn>
-                  {hotSearch
-                    .filter((_, index) => index % 2 === 1)
-                    .map((suggestion, index) => (
-                      <StyledHotSearchColumnItem
-                        key={index * 2 + 1}
-                        onClick={() => onSuggestionClick(suggestion)}
-                      >
-                        • {suggestion}
-                      </StyledHotSearchColumnItem>
-                    ))}
-                </StyledHotSearchColumn>
-              </StyledHotSearchContainer>
-            </Box>
-          )}
+            )}
+          </Box>
         </Box>
       )}
 
@@ -1035,11 +1161,16 @@ const AiQaContent: React.FC<{
         direction='column'
         className='conversation-container'
         sx={{
-          mb: conversation?.length > 0 ? 2 : 0,
-          display: conversation.length > 0 ? 'flex' : 'none',
+          mb: hasConversation ? 2 : 0,
+          display: hasConversation ? 'flex' : 'none',
+          flex: 1,
+          minHeight: 0,
+          maxHeight: 'none',
+          px: isWorkspaceLayout ? { xs: 1, md: 2 } : 0,
+          py: isWorkspaceLayout ? { xs: 1, md: 2 } : 0,
         }}
       >
-        <Stack gap={2}>
+        <Stack gap={2} sx={{ width: '100%', maxWidth: 980, mx: 'auto' }}>
           {conversation.map((item, index) => (
             <StyledConversationItem key={item.id}>
               {item.image_paths.length > 0 && (
@@ -1248,7 +1379,7 @@ const AiQaContent: React.FC<{
           ))}
         </Stack>
       </StyledConversationContainer>
-      {conversation.length > 0 && (
+      {hasConversation && (
         <Button
           variant='contained'
           sx={theme => ({
@@ -1270,6 +1401,7 @@ const AiQaContent: React.FC<{
               color: 'primary.main',
             },
             mb: 2,
+            alignSelf: isWorkspaceLayout ? 'center' : 'flex-start',
           })}
           onClick={onReset}
         >
@@ -1278,8 +1410,32 @@ const AiQaContent: React.FC<{
         </Button>
       )}
 
-      <StyledInputContainer>
-        <StyledInputWrapper>
+      <StyledInputContainer
+        sx={{
+          width: '100%',
+          maxWidth: isWorkspaceLayout ? 980 : '100%',
+          mx: isWorkspaceLayout ? 'auto' : 0,
+          mt: isWorkspaceLayout ? 'auto' : 0,
+          pb: isWorkspaceLayout ? { xs: 1, md: 2 } : 0,
+          px: isWorkspaceLayout ? { xs: 1, md: 2 } : 0,
+        }}
+      >
+        <StyledInputWrapper
+          sx={
+            isWorkspaceLayout
+              ? {
+                  px: { xs: 2, md: 2.5 },
+                  py: { xs: 1.5, md: 2 },
+                  borderRadius: '22px',
+                  backgroundColor: theme =>
+                    alpha(theme.palette.background.default, 0.68),
+                  borderColor: theme => alpha(theme.palette.text.primary, 0.12),
+                  boxShadow: theme =>
+                    `0px 18px 40px 0px ${alpha(theme.palette.common.black, 0.18)}`,
+                }
+              : undefined
+          }
+        >
           {/* 多张图片预览 */}
           {uploadedImages.length > 0 && (
             <StyledImagePreviewStack direction='row' flexWrap='wrap' gap={1}>
@@ -1331,6 +1487,21 @@ const AiQaContent: React.FC<{
             }}
             placeholder={placeholder}
             autoComplete='off'
+            sx={
+              isWorkspaceLayout
+                ? {
+                    '.MuiInputBase-root': {
+                      height: '84px !important',
+                      alignItems: 'flex-start',
+                    },
+                    textarea: {
+                      fontSize: 16,
+                      lineHeight: 1.7,
+                      paddingTop: '8px',
+                    },
+                  }
+                : undefined
+            }
           />
           <StyledActionButtonStack
             direction='row'

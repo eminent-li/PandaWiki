@@ -314,8 +314,8 @@ const HomeInlineQaPanel = () => {
       ref={panelRef}
       sx={theme => ({
         width: '100%',
-        px: { xs: 2, md: 4 },
-        py: { xs: 4, md: 7 },
+        px: { xs: 1.5, md: 3 },
+        py: { xs: 1.5, md: 2.5 },
         position: 'relative',
         overflow: 'hidden',
         '&::before': {
@@ -357,11 +357,11 @@ const HomeInlineQaPanel = () => {
               transform: 'translateY(0) scale(1)',
             },
           },
-          maxWidth: 1200,
-          mx: 'auto',
+          width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          minHeight: { xs: 600, md: 720 },
+          minHeight: { xs: 'calc(100vh - 16px)', md: 'calc(100vh - 24px)' },
+          height: { xs: 'calc(100vh - 16px)', md: 'calc(100vh - 24px)' },
           position: 'relative',
           background: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.96)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
           backdropFilter: 'blur(10px)',
@@ -381,23 +381,26 @@ const HomeInlineQaPanel = () => {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '260px minmax(0, 1fr)' },
-            gap: { xs: 2, md: 0 },
+            gridTemplateColumns: { xs: '1fr', md: '320px minmax(0, 1fr)' },
+            gap: { xs: 2, md: 2.5 },
             position: 'relative',
             zIndex: 1,
+            flex: 1,
+            minHeight: 0,
+            p: { xs: 1.5, md: 2.5 },
           }}
         >
           <Stack
-            sx={{
-              borderRight: {
-                xs: 'none',
-                md: theme =>
-                  `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
-              },
-              px: { xs: 2, md: 2 },
-              pt: { xs: 2.5, md: 3 },
-              pb: { xs: 0, md: 3 },
+            sx={theme => ({
+              border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
+              backgroundColor: alpha(theme.palette.background.default, 0.34),
+              backdropFilter: 'blur(14px)',
+              borderRadius: { xs: '20px', md: '24px' },
+              px: { xs: 1.5, md: 2 },
+              pt: { xs: 1.5, md: 2 },
+              pb: { xs: 1.5, md: 2 },
               minWidth: 0,
+              minHeight: 0,
               '@media (prefers-reduced-motion: no-preference)': {
                 animation:
                   'home-inline-qa-rise-in 520ms cubic-bezier(0.22, 1, 0.36, 1)',
@@ -412,7 +415,7 @@ const HomeInlineQaPanel = () => {
                   transform: 'translateY(0)',
                 },
               },
-            }}
+            })}
           >
             <Stack gap={2}>
               <Button
@@ -458,7 +461,12 @@ const HomeInlineQaPanel = () => {
                 )}
                 <Stack
                   gap={0.75}
-                  sx={{ maxHeight: { md: 560 }, overflowY: 'auto' }}
+                  sx={{
+                    minHeight: 0,
+                    overflowY: 'auto',
+                    flex: 1,
+                    pr: 0.5,
+                  }}
                 >
                   {historyItems.map(item => (
                     <Button
@@ -528,9 +536,12 @@ const HomeInlineQaPanel = () => {
           <Stack
             sx={{
               minWidth: 0,
-              px: { xs: 2, md: 4 },
-              pt: { xs: 0, md: 3 },
-              pb: { xs: 2, md: 3 },
+              minHeight: 0,
+              px: { xs: 1, md: 1.5 },
+              pt: { xs: 0, md: 0.5 },
+              pb: { xs: 1, md: 1.5 },
+              display: 'flex',
+              flexDirection: 'column',
               '@media (prefers-reduced-motion: no-preference)': {
                 animation:
                   'home-inline-qa-content-in 620ms cubic-bezier(0.22, 1, 0.36, 1)',
@@ -614,6 +625,7 @@ const HomeInlineQaPanel = () => {
             <Box
               sx={{
                 flex: 1,
+                minHeight: 0,
                 display: searchMode === 'chat' ? 'flex' : 'none',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -628,15 +640,24 @@ const HomeInlineQaPanel = () => {
                 activeConversationId={homeInlineQaConversationId}
                 onConversationIdChange={setHomeInlineQaConversationId}
                 persistConversationInUrl={false}
+                layoutMode='workspace'
               />
             </Box>
 
             <Box
               sx={{
                 flex: 1,
+                minHeight: 0,
                 display: searchMode === 'search' ? 'flex' : 'none',
                 flexDirection: 'column',
                 minWidth: 0,
+                borderRadius: '22px',
+                border: theme =>
+                  `1px solid ${alpha(theme.palette.text.primary, 0.06)}`,
+                backgroundColor: theme =>
+                  alpha(theme.palette.background.default, 0.3),
+                px: { xs: 1.5, md: 3 },
+                py: { xs: 1.5, md: 2.5 },
               }}
             >
               <SearchDocContent
