@@ -212,7 +212,7 @@ const AiQaContent: React.FC<{
   const [fullAnswer, setFullAnswer] = useState<string>('');
   const [conversation, setConversation] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [thinking, setThinking] = useState<keyof typeof AnswerStatus>(4);
+  const [thinking, setThinking] = useState<keyof AnswerStatusMap>(4);
   const [nonce, setNonce] = useState('');
   const [conversationId, setConversationId] = useState('');
   const [input, setInput] = useState('');
