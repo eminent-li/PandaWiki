@@ -113,6 +113,10 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 			return
 		}
 		req.ModelInfo = model
+		if len(req.ImagePaths) > 0 && !req.ModelInfo.Parameters.SupportImages {
+			eventCh <- domain.SSEEvent{Type: "error", Content: "当前启用的模型未开启图片理解能力，请在系统设置中切换或配置支持图片的模型。"}
+			return
+		}
 		// 3. conversation management
 		if req.AppType == domain.AppTypeWechatServiceBot || req.AppType == domain.AppTypeWechatBot || req.AppType == domain.AppTypeWecomAIBot { // wechat service has its own id
 			nonce := uuid.New().String()

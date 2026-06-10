@@ -312,6 +312,7 @@ export interface DomainAppInfoResp {
   name?: string;
   recommend_nodes?: DomainRecommendNodeListResp[];
   settings?: DomainAppSettingsResp;
+  support_images?: boolean;
 }
 
 export interface DomainAppSettings {

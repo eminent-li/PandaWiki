@@ -59,6 +59,7 @@ export interface ThemeAndStyleSetting {
 export interface KBDetail {
   name: string;
   base_url?: string;
+  support_images?: boolean;
   settings: {
     conversation_setting: DomainConversationSetting;
     title: string;
@@ -103,6 +104,7 @@ export interface DomainSocialMediaAccount {
 }
 
 export type WidgetInfo = {
+  support_images?: boolean;
   recommend_nodes: RecommendNode[];
   settings: {
     title: string;

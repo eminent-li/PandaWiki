@@ -257,6 +257,19 @@ func (u *AppUsecase) getQAFunc(kbID string, appType domain.AppType) bot.GetQAFun
 	}
 }
 
+func (u *AppUsecase) getCurrentChatSupportImages(ctx context.Context) bool {
+	if u.chatUsecase == nil || u.chatUsecase.modelUsecase == nil {
+		return false
+	}
+
+	model, err := u.chatUsecase.modelUsecase.GetChatModel(ctx)
+	if err != nil || model == nil {
+		return false
+	}
+
+	return model.Parameters.SupportImages
+}
+
 func (u *AppUsecase) updateFeishuBot(app *domain.App) {
 	u.feishuMutex.Lock()
 	defer u.feishuMutex.Unlock()
@@ -681,8 +694,9 @@ func (u *AppUsecase) ShareGetWebAppInfo(ctx context.Context, kbID string, authId
 		webAppLandingConfigs = append(webAppLandingConfigs, webAppLandingConfigResp)
 	}
 	appInfo := &domain.AppInfoResp{
-		Name:    app.Name,
-		BaseUrl: kb.AccessSettings.BaseURL,
+		Name:          app.Name,
+		BaseUrl:       kb.AccessSettings.BaseURL,
+		SupportImages: u.getCurrentChatSupportImages(ctx),
 		Settings: domain.AppSettingsResp{
 			Title:              app.Settings.Title,
 			Icon:               app.Settings.Icon,
@@ -759,6 +773,7 @@ func (u *AppUsecase) GetWidgetAppInfo(ctx context.Context, kbID string) (*domain
 		return nil, err
 	}
 	appInfo := &domain.AppInfoResp{
+		SupportImages: u.getCurrentChatSupportImages(ctx),
 		Settings: domain.AppSettingsResp{
 			Title:              webApp.Settings.Title,
 			Icon:               webApp.Settings.Icon,

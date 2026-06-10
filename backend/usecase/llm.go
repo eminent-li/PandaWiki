@@ -75,6 +75,12 @@ func (u *LLMUsecase) BuildConversationMessageWithRAG(
 		return nil, nil, errors.New("get conversation messages failed")
 	}
 	if len(msgs) > 0 {
+		kb, err := u.kbRepo.GetKnowledgeBaseByID(ctx, kbID)
+		if err != nil {
+			u.logger.Error("get kb failed", log.Error(err))
+			return nil, nil, errors.New("get kb failed")
+		}
+		baseURL := kb.AccessSettings.GetBaseUrl()
 		historyMessages := make([]*schema.Message, 0)
 		for idx, msg := range msgs {
 			switch msg.Role {
@@ -85,8 +91,7 @@ func (u *LLMUsecase) BuildConversationMessageWithRAG(
 				if questionOverride != "" && idx == len(msgs)-1 {
 					messageContent = questionOverride
 				}
-				content := u.formatMessageWithImages(messageContent, msg.ImagePaths)
-				historyMessages = append(historyMessages, schema.UserMessage(content))
+				historyMessages = append(historyMessages, u.buildUserMessageWithImages(messageContent, msg.ImagePaths, baseURL))
 			default:
 				continue
 			}
@@ -110,23 +115,23 @@ func (u *LLMUsecase) BuildConversationMessageWithRAG(
 				schema.SystemMessage(systemPrompt),
 				schema.UserMessage(domain.UserQuestionFormatter),
 			)
-			kb, err := u.kbRepo.GetKnowledgeBaseByID(ctx, kbID)
-			if err != nil {
-				u.logger.Error("get kb failed", log.Error(err))
-				return nil, nil, errors.New("get kb failed")
+			question = strings.TrimSpace(question)
+			if question != "" {
+				rewrittenQuery, rankedNodes, err = u.GetRankNodes(ctx, GetRankNodesRequest{
+					DatasetID:           kb.DatasetID,
+					Question:            question,
+					GroupIDs:            groupIDs,
+					SimilarityThreshold: 0.2,
+					HistoryMessages:     historyMessages[:len(historyMessages)-1],
+				})
+				if err != nil {
+					u.logger.Error("get rank nodes failed", log.Error(err))
+					return nil, nil, errors.New("get rank nodes failed")
+				}
+			} else {
+				rewrittenQuery = question
 			}
-			rewrittenQuery, rankedNodes, err = u.GetRankNodes(ctx, GetRankNodesRequest{
-				DatasetID:           kb.DatasetID,
-				Question:            question,
-				GroupIDs:            groupIDs,
-				SimilarityThreshold: 0.2,
-				HistoryMessages:     historyMessages[:len(historyMessages)-1],
-			})
-			if err != nil {
-				u.logger.Error("get rank nodes failed", log.Error(err))
-				return nil, nil, errors.New("get rank nodes failed")
-			}
-			documents := domain.FormatNodeChunks(rankedNodes, kb.AccessSettings.BaseURL)
+			documents := domain.FormatNodeChunks(rankedNodes, baseURL)
 			u.logger.Debug("documents", log.String("documents", documents))
 
 			formattedMessages, err := template.Format(ctx, map[string]any{
@@ -189,7 +194,6 @@ func (u *LLMUsecase) ChatWithAgent(
 			return fmt.Errorf("on chunk data: %w", err)
 		}
 
-		// set to usage
 		if msg.ResponseMeta.Usage != nil {
 			*usage = *msg.ResponseMeta.Usage
 		}
@@ -208,6 +212,61 @@ func (u *LLMUsecase) Generate(
 		return "", fmt.Errorf("generate failed: %w", err)
 	}
 	return resp.Content, nil
+}
+
+func (u *LLMUsecase) buildUserMessageWithImages(message string, imagePaths []string, baseURL string) *schema.Message {
+	message = strings.TrimSpace(message)
+	if len(imagePaths) == 0 {
+		return schema.UserMessage(message)
+	}
+
+	parts := make([]schema.MessageInputPart, 0, len(imagePaths)+1)
+	if message != "" {
+		parts = append(parts, schema.MessageInputPart{
+			Type: schema.ChatMessagePartTypeText,
+			Text: message,
+		})
+	}
+
+	for _, path := range imagePaths {
+		imageURL := buildAbsoluteStaticFileURL(baseURL, path)
+		if imageURL == "" {
+			continue
+		}
+		parts = append(parts, schema.MessageInputPart{
+			Type: schema.ChatMessagePartTypeImageURL,
+			Image: &schema.MessageInputImage{
+				MessagePartCommon: schema.MessagePartCommon{
+					URL: &imageURL,
+				},
+				Detail: schema.ImageURLDetailAuto,
+			},
+		})
+	}
+
+	if len(parts) == 0 {
+		return schema.UserMessage(message)
+	}
+
+	return &schema.Message{
+		Role:                  schema.User,
+		Content:               message,
+		UserInputMultiContent: parts,
+	}
+}
+
+func buildAbsoluteStaticFileURL(baseURL, path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") || strings.HasPrefix(path, "data:") {
+		return path
+	}
+	if baseURL == "" {
+		return path
+	}
+	return strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
 }
 
 func (u *LLMUsecase) SummaryNode(ctx context.Context, kbID string, model *domain.Model, name, content string) (string, error) {
@@ -515,18 +574,4 @@ func (u *LLMUsecase) GetRankNodes(ctx context.Context, req GetRankNodesRequest) 
 		}
 	}
 	return rewrittenQuery, rankedNodes, nil
-}
-
-// formatMessageWithImages converts image paths to markdown format and appends to message
-func (u *LLMUsecase) formatMessageWithImages(message string, imagePaths []string) string {
-	if len(imagePaths) == 0 {
-		return message
-	}
-	var builder strings.Builder
-	builder.WriteString(message)
-	for _, path := range imagePaths {
-		builder.WriteString("\n")
-		builder.WriteString(fmt.Sprintf("![](%s)", path))
-	}
-	return builder.String()
 }

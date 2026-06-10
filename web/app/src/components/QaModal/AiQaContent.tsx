@@ -20,6 +20,7 @@ import {
   Button,
   IconButton,
   Stack,
+  Tooltip,
   Typography,
   alpha,
   useTheme,
@@ -348,6 +349,13 @@ const AiQaContent: React.FC<{
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!supportImages) {
+      message.info(uploadDisabledReason);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
     handleImageSelect(event.target.files);
     // 重置 input value 以允许上传相同文件
     if (fileInputRef.current) {
@@ -368,6 +376,9 @@ const AiQaContent: React.FC<{
 
   // 处理粘贴上传
   const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!supportImages) {
+      return;
+    }
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -701,6 +712,8 @@ const AiQaContent: React.FC<{
   const { mobile = false, kbDetail, qaModalOpen } = useStore();
   const isWorkspaceLayout = layoutMode === 'workspace';
   const hasConversation = conversation.length > 0;
+  const supportImages = kbDetail?.support_images ?? false;
+  const uploadDisabledReason = '当前模型未开启图片理解能力';
 
   const isFeedbackEnabled =
     // @ts-ignore
@@ -1514,18 +1527,32 @@ const AiQaContent: React.FC<{
               accept='.jpg,.jpeg,.png,.webp'
               multiple
               style={{ display: 'none' }}
+              disabled={!supportImages}
               onChange={handleImageUpload}
             />
-            <IconButton
-              size='small'
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
-              sx={{
-                flexShrink: 0,
-              }}
+            <Tooltip
+              title={supportImages ? '' : uploadDisabledReason}
+              disableHoverListener={supportImages}
             >
-              <IconTupian sx={{ fontSize: 20, color: 'text.secondary' }} />
-            </IconButton>
+              <span>
+                <IconButton
+                  size='small'
+                  onClick={() => {
+                    if (!supportImages) {
+                      message.info(uploadDisabledReason);
+                      return;
+                    }
+                    fileInputRef.current?.click();
+                  }}
+                  disabled={loading || !supportImages}
+                  sx={{
+                    flexShrink: 0,
+                  }}
+                >
+                  <IconTupian sx={{ fontSize: 20, color: 'text.secondary' }} />
+                </IconButton>
+              </span>
+            </Tooltip>
 
             <Box
               sx={{

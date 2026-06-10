@@ -638,5 +638,6 @@ type AppInfoResp struct {
 
 	Settings       AppSettingsResp          `json:"settings" gorm:"type:jsonb"`
 	BaseUrl        string                   `json:"base_url"`
+	SupportImages  bool                     `json:"support_images"`
 	RecommendNodes []*RecommendNodeListResp `json:"recommend_nodes,omitempty" gorm:"-"`
 }
