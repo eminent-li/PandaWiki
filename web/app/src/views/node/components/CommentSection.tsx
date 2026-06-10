@@ -7,20 +7,19 @@ import CommentInput, {
 import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { getImagePath } from '@/utils/getImagePath';
-          {country === t.chinaName ? `${province}-${city}` : `${country}`}
+import { Image } from '@ctzhian/ui';
+import dayjs from 'dayjs';
 import { Box, Button, Divider, Stack, TextField } from '@mui/material';
 import React from 'react';
 import {
+  Control,
+  Controller,
+  FieldErrors,
+  UseFormHandleSubmit,
+} from 'react-hook-form';
+
+interface CommentItem {
   id: string;
-  import { Image } from '@ctzhian/ui';
-  import { Box, Button, Divider, Stack, TextField } from '@mui/material';
-  import React from 'react';
-  import {
-    Control,
-    Controller,
-    FieldErrors,
-    UseFormHandleSubmit,
-  } from 'react-hook-form';
   content: string;
   created_at: string;
   pic_urls?: string[];
@@ -164,26 +163,28 @@ const CommentSection = ({
                 {item.info.user_name}
               </Box>
               <Box sx={{ fontSize: 14 }}>{item.content}</Box>
-              <Stack direction='row' gap={1}>
-                <Image.PreviewGroup>
-                  {(item.pic_urls || []).map((url: string) => (
-                    <Image
-                      key={url}
-                      alt={url}
-                      src={getImagePath(url, basePath)}
-                      width={80}
-                      height={80}
-                      style={{
-                        borderRadius: '4px',
-                        objectFit: 'cover',
-                        boxShadow: '0px 0px 3px 1px rgba(0,0,5,0.15)',
-                        cursor: 'pointer',
-                      }}
-                      referrerPolicy='no-referrer'
-                    />
-                  ))}
-                </Image.PreviewGroup>
-              </Stack>
+              {commentImages.length >= 0 && (
+                <Stack direction='row' gap={1}>
+                  <Image.PreviewGroup>
+                    {(item.pic_urls || []).map((url: string) => (
+                      <Image
+                        key={url}
+                        alt={url}
+                        src={getImagePath(url, basePath)}
+                        width={80}
+                        height={80}
+                        style={{
+                          borderRadius: '4px',
+                          objectFit: 'cover',
+                          boxShadow: '0px 0px 3px 1px rgba(0,0,5,0.15)',
+                          cursor: 'pointer',
+                        }}
+                        referrerPolicy='no-referrer'
+                      />
+                    ))}
+                  </Image.PreviewGroup>
+                </Stack>
+              )}
               <Stack
                 direction='row'
                 justifyContent='flex-end'

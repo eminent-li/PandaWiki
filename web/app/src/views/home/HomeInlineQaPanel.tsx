@@ -496,6 +496,35 @@ const HomeInlineQaPanel = () => {
                   gap={1.5}
                   alignItems={{ xs: 'stretch', sm: 'center' }}
                 >
+                  <Button
+                    variant={language === 'zh-CN' ? 'contained' : 'outlined'}
+                    onClick={() => setLanguage?.('zh-CN')}
+                    sx={{
+                      borderRadius: '999px',
+                      px: 2,
+                      minWidth: 0,
+                      whiteSpace: 'nowrap',
+                      textTransform: 'none',
+                    }}
+                  >
+                    {t.chinese}
+                  </Button>
+                  <Button
+                    variant={language === 'en-US' ? 'contained' : 'outlined'}
+                    onClick={() => setLanguage?.('en-US')}
+                    sx={{
+                      borderRadius: '999px',
+                      px: 2,
+                      minWidth: 0,
+                      whiteSpace: 'nowrap',
+                      textTransform: 'none',
+                    }}
+                  >
+                    {t.english}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Stack>
           <Stack
             sx={{
               minWidth: 0,
