@@ -55,7 +55,7 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
       value,
       onChange,
       onImagesChange,
-      placeholder = t.enterComment,
+      placeholder,
       error,
       helperText,
       onFocus,
@@ -67,6 +67,7 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
   ) => {
     const { language = 'zh-CN' } = useStore();
     const t = getQaMessages(language);
+    const resolvedPlaceholder = placeholder ?? t.enterComment;
     const theme = useTheme();
     const basePath = useBasePath();
     const [images, setImages] = useState<ImageItem[]>([]);
@@ -287,7 +288,7 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
           onFocus={onFocus}
           onBlur={onBlur}
           onPaste={handlePaste}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           fullWidth
           multiline
           minRows={2}
