@@ -490,6 +490,7 @@ const HomeInlineQaPanel = () => {
                       </Typography>
                     </Button>
                   ))}
+                </Stack>
                 <Stack
                   direction={{ xs: 'column', sm: 'row' }}
                   gap={1.5}
