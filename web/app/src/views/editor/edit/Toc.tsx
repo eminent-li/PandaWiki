@@ -8,6 +8,8 @@ import {
   TocList,
 } from '@ctzhian/tiptap';
 import { Ellipsis } from '@ctzhian/ui';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { Box, Drawer, IconButton, Stack } from '@mui/material';
 import { useState } from 'react';
 import { IconDingzi, IconIcon_tool_close } from '@panda-wiki/icons';
