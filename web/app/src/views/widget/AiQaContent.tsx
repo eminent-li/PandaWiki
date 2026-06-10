@@ -6,7 +6,7 @@ import Feedback from '@/components/feedback';
 import { IconCopy } from '@/components/icons';
 import MarkDown2 from '@/components/markdown2';
 import { useBasePath, useSmartScroll } from '@/hooks';
-import { getQaMessages } from '@/locales/qa';
+import { getQaMessages, resolveQaAnswerDisclaimer } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { postShareV1ChatFeedback } from '@/request/ShareChat';
 import { getShareV1ConversationDetail } from '@/request/ShareConversation';
@@ -945,8 +945,10 @@ const AiQaContent: React.FC<{
                       )}
                     </Stack>
                     <Box>
-                      {widget?.settings?.widget_bot_settings?.disclaimer ||
-                        t.answerDisclaimer}
+                      {resolveQaAnswerDisclaimer(
+                        language,
+                        widget?.settings?.widget_bot_settings?.disclaimer,
+                      )}
                     </Box>
                   </StyledActionStack>
                 )}

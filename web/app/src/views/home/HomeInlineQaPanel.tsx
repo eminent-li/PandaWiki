@@ -17,7 +17,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AiQaContent from '@/components/QaModal/AiQaContent';
 import SearchDocContent from '@/components/QaModal/SearchDocContent';
-import { getQaMessages } from '@/locales/qa';
+import { getQaMessages, resolveQaSupportBy } from '@/locales/qa';
 
 const StyledTabs = styled(Tabs)(({ theme }) => ({
   minHeight: 'auto',
@@ -652,8 +652,10 @@ const HomeInlineQaPanel = () => {
                 }}
               >
                 <Typography variant='caption' color='text.disabled'>
-                  {kbDetail?.settings?.conversation_setting?.copyright_info ||
-                    t.supportBy}
+                  {resolveQaSupportBy(
+                    language,
+                    kbDetail?.settings?.conversation_setting?.copyright_info,
+                  )}
                 </Typography>
               </Box>
             )}

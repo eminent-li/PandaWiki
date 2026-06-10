@@ -14,7 +14,7 @@ import { copyText } from '@/utils';
 import LoadingIcon from '@/assets/images/loading.png';
 import Image from 'next/image';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { getQaMessages } from '@/locales/qa';
+import { getQaMessages, resolveQaAnswerDisclaimer } from '@/locales/qa';
 import { useStore } from '@/provider';
 import Feedback from '@/components/feedback';
 import { ConstsSourceType, V1WechatAppInfoResp } from '@/request/types';
@@ -258,12 +258,12 @@ const H5Chat = () => {
   }, [appSetting]);
 
   const disclaimerContent = useMemo(() => {
-    return (
+    return resolveQaAnswerDisclaimer(
+      language,
       appSetting?.disclaimer_content ??
-      kbDetail?.settings?.disclaimer_settings?.content ??
-      ''
+        kbDetail?.settings?.disclaimer_settings?.content,
     );
-  }, [appSetting, kbDetail]);
+  }, [appSetting, kbDetail, language]);
 
   useEffect(() => {
     messagesContainerRef.current?.scrollTo({

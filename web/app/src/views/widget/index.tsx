@@ -1,6 +1,6 @@
 'use client';
 import { WidgetInfo } from '@/assets/type';
-import { getQaMessages } from '@/locales/qa';
+import { getQaMessages, resolveQaSupportBy } from '@/locales/qa';
 import { useStore } from '@/provider';
 import {
   alpha,
@@ -214,8 +214,10 @@ const Widget = () => {
             }}
           >
             <Box>
-              {widget?.settings?.widget_bot_settings?.copyright_info ||
-                t.supportBy}
+              {resolveQaSupportBy(
+                language,
+                widget?.settings?.widget_bot_settings?.copyright_info,
+              )}
             </Box>
           </Typography>
         </Box>
