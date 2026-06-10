@@ -4,13 +4,34 @@ import CommentInput, {
   CommentInputRef,
   ImageItem,
 } from '@/components/commentInput';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { getImagePath } from '@/utils/getImagePath';
-import { Image } from '@ctzhian/ui';
+          {country === t.chinaName ? `${province}-${city}` : `${country}`}
 import { Box, Button, Divider, Stack, TextField } from '@mui/material';
 import React from 'react';
 import {
   Control,
   Controller,
+  const renderIp = (
+    ip_address: CommentItem['ip_address'],
+    t: ReturnType<typeof getQaMessages>,
+  ) => {
+    const {
+      city = '',
+      country = t.unknownLocation,
+      province = '',
+      ip,
+    } = ip_address || {};
+    return (
+      <>
+        <Box>{ip}</Box>
+        <Box sx={{ color: 'text.tertiary', fontSize: 12 }}>
+          {country === t.chinaName ? `${province}-${city}` : `${country}`}
+        </Box>
+      </>
+    );
+  };
   FieldErrors,
   UseFormHandleSubmit,
 } from 'react-hook-form';
@@ -72,10 +93,14 @@ const CommentSection = ({
   onImagesChange,
   basePath,
   showNameInput,
-}: CommentSectionProps) => (
+}: CommentSectionProps) => {
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
+
+  return (
   <>
     <Divider sx={{ my: 4 }} />
-    <Box sx={{ fontWeight: 700, fontSize: 18, mb: 3 }}>评论</Box>
+    <Box sx={{ fontWeight: 700, fontSize: 18, mb: 3 }}>{t.comments}</Box>
     <Box
       sx={{
         p: 2,
@@ -88,7 +113,7 @@ const CommentSection = ({
       <Controller
         name='content'
         control={control}
-        rules={{ required: '请输入评论' }}
+        rules={{ required: t.enterComment }}
         render={({ field }) => (
           <CommentInput
             value={field.value}
@@ -102,7 +127,7 @@ const CommentSection = ({
               onContentBlur();
               field.onBlur();
             }}
-            placeholder='请输入评论'
+            placeholder={t.enterComment}
             error={!!errors.content}
             helperText={errors.content?.message}
           />
@@ -116,22 +141,22 @@ const CommentSection = ({
         sx={{ fontSize: 14, color: 'text.secondary' }}
       >
         <Button variant='contained' onClick={onSubmit} loading={commentLoading}>
-          发送
+          {t.send}
         </Button>
         {showNameInput && (
           <Controller
-            rules={{ required: '请输入你的昵称' }}
+            rules={{ required: t.enterNickname }}
             name='name'
             control={control}
             render={({ field }) => (
               <TextField
                 {...field}
-                placeholder='你的昵称'
+                placeholder={t.yourNickname}
                 size='small'
                 sx={{
                   '.MuiOutlinedInput-notchedOutline': {
                     border: '1px solid',
-                    borderColor: 'var(--mui-palette-divider) !important',
+                {renderIp(item.ip_address, t)}
                   },
                 }}
                 error={!!errors.name}
@@ -182,12 +207,13 @@ const CommentSection = ({
             </Stack>
           </Stack>
           <Divider sx={{ my: 3, color: 'text.tertiary', fontSize: 14 }}>
-            {index !== commentList.length - 1 ? '' : '没有更多了'}
+            {index !== commentList.length - 1 ? '' : t.noMore}
           </Divider>
         </React.Fragment>
       ))}
     </Stack>
   </>
-);
+  );
+};
 
 export default CommentSection;

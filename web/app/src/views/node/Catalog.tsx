@@ -1,5 +1,6 @@
 'use client';
 import { NAV_BAR_HEIGHT } from '@/constant';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { Box, Stack, SxProps, Tooltip } from '@mui/material';
 import { IconMulu } from '@panda-wiki/icons';
@@ -12,6 +13,7 @@ const Catalog = ({ sx }: { sx?: SxProps }) => {
   const id = params.id as string;
   const {
     kbDetail,
+    language = 'zh-CN',
     mobile = false,
     catalogShow,
     setCatalogShow,
@@ -21,6 +23,7 @@ const Catalog = ({ sx }: { sx?: SxProps }) => {
   } = useStore();
 
   const docWidth = kbDetail?.settings?.theme_and_style?.doc_width || 'full';
+  const t = getQaMessages(language);
 
   const listRef = useRef<HTMLDivElement>(null);
   const hasScrolledOnceRef = useRef(false);
@@ -90,7 +93,7 @@ const Catalog = ({ sx }: { sx?: SxProps }) => {
             ...(docWidth === 'full' ? { ml: 1 } : { mr: 1 }),
           }}
         >
-          <Tooltip title={catalogShow ? null : '展开目录'} arrow>
+          <Tooltip title={catalogShow ? null : t.expandCatalog} arrow>
             <IconMulu
               sx={{
                 fontSize: 16,
@@ -124,7 +127,7 @@ const Catalog = ({ sx }: { sx?: SxProps }) => {
               wordBreak: 'keep-all',
             }}
           >
-            目录
+            {t.catalog}
           </Box>
           <IconMulu
             sx={{ fontSize: 16, cursor: 'pointer' }}

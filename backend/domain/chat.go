@@ -11,6 +11,7 @@ type ChatRequest struct {
 	ConversationID   string   `json:"conversation_id"`
 	Message          string   `json:"message"`
 	QuestionOverride string   `json:"question_override,omitempty"`
+	Language         string   `json:"language,omitempty"`
 	ImagePaths       []string `json:"image_paths" validate:"max=3"`
 	Nonce            string   `json:"nonce"`
 	AppType          AppType  `json:"app_type" validate:"required,oneof=1 2"`
@@ -24,6 +25,17 @@ type ChatRequest struct {
 	RemoteIP string           `json:"-"`
 	Info     ConversationInfo `json:"-"`
 	Prompt   string           `json:"-"`
+}
+
+func NormalizeLanguage(language string) string {
+	switch language {
+	case "en-US":
+		return "en-US"
+	case "zh-CN":
+		return "zh-CN"
+	default:
+		return "zh-CN"
+	}
 }
 
 type ChatRagOnlyRequest struct {

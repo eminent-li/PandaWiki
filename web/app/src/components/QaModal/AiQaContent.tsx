@@ -6,6 +6,7 @@ import Feedback from '@/components/feedback';
 import { IconCopy } from '@/components/icons';
 import MarkDown2 from '@/components/markdown2';
 import { useBasePath, useSmartScroll } from '@/hooks';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { postShareV1ChatFeedback } from '@/request/ShareChat';
 import { getShareV1ConversationDetail } from '@/request/ShareConversation';
@@ -36,6 +37,7 @@ import {
   IconXingxing,
 } from '@panda-wiki/icons';
 import dayjs from 'dayjs';
+import 'dayjs/locale/en';
 import 'dayjs/locale/zh-cn';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import Image from 'next/image';
@@ -93,12 +95,14 @@ export interface ConversationItem {
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
 
-const AnswerStatus = {
-  1: '正在搜索结果...',
-  2: '思考中...',
-  3: '正在回答',
+const getAnswerStatus = (t: ReturnType<typeof getQaMessages>) => ({
+  1: t.searching,
+  2: t.thinking,
+  3: t.answering,
   4: '',
-};
+});
+
+type AnswerStatusMap = ReturnType<typeof getAnswerStatus>;
 
 const MAX_HISTORY_CONTEXT_TURNS = 3;
 const MAX_HISTORY_CONTEXT_CHARS = 4000;
@@ -114,6 +118,7 @@ const trimContextText = (text: string, maxChars: number) => {
 const buildHistoryContextMessage = (
   items: ConversationItem[],
   question: string,
+  t: ReturnType<typeof getQaMessages>,
 ) => {
   const historyItems = items
     .filter(item => item.source === 'history')
@@ -137,20 +142,22 @@ const buildHistoryContextMessage = (
   );
 
   return [
-    '以下是用户此前同一主题下的历史对话，请优先继承这些上下文来理解本次追问。',
-    '如果本次问题存在省略、代词指代或上下文延续，请默认它延续的是下面这些历史内容，而不是一个全新的独立问题。',
+    t.inheritHistoryPrefix,
+    t.inheritHistoryHint,
     '',
-    '历史对话：',
+    t.historyConversation,
     contextText,
     '',
-    `用户当前追问：${question}`,
+    `${t.currentFollowUp}${question}`,
   ].join('\n');
 };
 
 const LoadingContent = ({
   thinking,
+  answerStatus,
 }: {
-  thinking: keyof typeof AnswerStatus;
+  thinking: keyof AnswerStatusMap;
+  answerStatus: AnswerStatusMap;
 }) => {
   if (thinking === 4 || thinking === 2) return null;
   return (
@@ -169,7 +176,7 @@ const LoadingContent = ({
           color: alpha(theme.palette.text.primary, 0.5),
         })}
       >
-        {AnswerStatus[thinking]}
+        {answerStatus[thinking]}
       </Typography>
     </Stack>
   );
@@ -305,7 +312,7 @@ const AiQaContent: React.FC<{
     const maxImages = 3;
     const remainingSlots = maxImages - uploadedImages.length;
     if (remainingSlots <= 0) {
-      message.warning(`最多只能上传 ${maxImages} 张图片`);
+      message.warning(t.uploadLimit.replace('{count}', String(maxImages)));
       return;
     }
 
@@ -321,13 +328,13 @@ const AiQaContent: React.FC<{
       for (const file of filesToAdd) {
         // 验证文件类型
         if (!file.type.startsWith('image/')) {
-          message.error('只支持上传图片文件');
+          message.error(t.onlyImageAllowed);
           continue;
         }
 
         // 验证文件大小 (10MB)
         if (file.size > 10 * 1024 * 1024) {
-          message.error('图片大小不能超过 10MB');
+          message.error(t.imageTooLarge);
           continue;
         }
 
@@ -344,7 +351,7 @@ const AiQaContent: React.FC<{
       const updatedImages = [...uploadedImages, ...newImages];
       setUploadedImages(updatedImages);
     } catch (error: any) {
-      message.error(error.message || '图片选择失败');
+      message.error(error.message || t.uploadFailed);
     }
   };
 
@@ -495,7 +502,7 @@ const AiQaContent: React.FC<{
           const solution = await cap.solve();
           token = solution.token;
         } catch (error) {
-          message.error('验证失败');
+          message.error(t.verifyFailed);
           return Promise.reject(error);
         }
         // 上传新图片
@@ -510,7 +517,7 @@ const AiQaContent: React.FC<{
       return uploadedUrls;
     } catch (error: any) {
       setLoading(false);
-      message.error(error.message || '图片上传失败');
+      message.error(error.message || t.uploadFailed);
       throw error;
     }
   };
@@ -533,7 +540,7 @@ const AiQaContent: React.FC<{
     } catch (error) {
       setLoading(false);
       setThinking(4);
-      message.error('验证失败');
+      message.error(t.verifyFailed);
       return;
     }
 
@@ -545,6 +552,7 @@ const AiQaContent: React.FC<{
       conversation_id: '',
       app_type: 1,
       captcha_token: token,
+      language,
     };
     const currentConversationId = conversationIdRef.current;
     const currentNonce = nonceRef.current;
@@ -575,8 +583,8 @@ const AiQaContent: React.FC<{
                 lastConversation.a =
                   lastConversation.a +
                   (content
-                    ? `\n\n回答出现错误：<error>${content}</error>`
-                    : '\n\n回答出现错误，请重试');
+                    ? `\n\n${t.answerError}: <error>${content}</error>`
+                    : `\n\n${t.answerErrorRetry}`);
               }
               return newConversation;
             });
@@ -661,7 +669,7 @@ const AiQaContent: React.FC<{
     const shouldStartFreshFromHistory =
       conversation.some(item => item.source === 'history') && !nonceRef.current;
     const outboundQuestion = shouldStartFreshFromHistory
-      ? buildHistoryContextMessage(conversation, q)
+      ? buildHistoryContextMessage(conversation, q, t)
       : q;
 
     if (shouldStartFreshFromHistory) {
@@ -709,11 +717,24 @@ const AiQaContent: React.FC<{
     setThinking(4);
   };
 
-  const { mobile = false, kbDetail, qaModalOpen } = useStore();
+  const {
+    mobile = false,
+    kbDetail,
+    qaModalOpen,
+    language = 'zh-CN',
+  } = useStore();
   const isWorkspaceLayout = layoutMode === 'workspace';
   const hasConversation = conversation.length > 0;
+  const t = getQaMessages(language);
+  const answerStatus = getAnswerStatus(t);
   const supportImages = kbDetail?.support_images ?? false;
-  const uploadDisabledReason = '当前模型未开启图片理解能力';
+  const uploadDisabledReason = t.uploadUnsupported;
+  const composerPlaceholder =
+    language === 'en-US' ? t.askPlaceholder : placeholder || t.askPlaceholder;
+
+  useEffect(() => {
+    dayjs.locale(language === 'en-US' ? 'en' : 'zh-cn');
+  }, [language]);
 
   const isFeedbackEnabled =
     // @ts-ignore
@@ -733,7 +754,7 @@ const AiQaContent: React.FC<{
     if (type) data.type = type;
     if (content) data.feedback_content = content;
     await postShareV1ChatFeedback(data);
-    message.success('反馈成功');
+    message.success(t.feedbackSuccess);
     setConversation(
       conversation.map(item => {
         return item.message_id === message_id ? { ...item, score } : item;
@@ -759,7 +780,7 @@ const AiQaContent: React.FC<{
           window.location.href = `${basePath}/auth/login?redirect=${encodeURIComponent(current.pathname + current.search)}`;
           return;
         }
-        message.error(error.message || '请求失败');
+        message.error(error.message || t.requestFailed);
       },
       onCancel: () => {
         setLoading(false);
@@ -774,7 +795,7 @@ const AiQaContent: React.FC<{
           const lastConversation = newConversation[newConversation.length - 1];
           if (lastConversation) {
             lastConversation.a =
-              lastConversation.a + '\n\n<error>Request canceled</error>';
+              lastConversation.a + `\n\n<error>${t.requestCanceled}</error>`;
             lastConversation.update_time = dayjs().format(
               'YYYY-MM-DD HH:mm:ss',
             );
@@ -1042,7 +1063,7 @@ const AiQaContent: React.FC<{
                     }}
                   >
                     <IconXingxing sx={{ fontSize: 14 }} />
-                    大家都在搜什么?
+                    {t.hotSearchTitle}
                   </Typography>
                 </Box>
 
@@ -1237,7 +1258,10 @@ const AiQaContent: React.FC<{
                           color: alpha(theme.palette.text.primary, 0.5),
                         })}
                       >
-                        共找到 {item.chunk_result.length} 个结果
+                        {t.resultsFound.replace(
+                          '{count}',
+                          String(item.chunk_result.length),
+                        )}
                       </Typography>
                     </StyledChunkAccordionSummary>
 
@@ -1270,7 +1294,10 @@ const AiQaContent: React.FC<{
 
                 {/* 加载状态 */}
                 {index === conversation.length - 1 && loading && (
-                  <LoadingContent thinking={thinking} />
+                  <LoadingContent
+                    thinking={thinking}
+                    answerStatus={answerStatus}
+                  />
                 )}
 
                 {/* 思考过程 */}
@@ -1307,8 +1334,8 @@ const AiQaContent: React.FC<{
                           })}
                         >
                           {thinking === 2 && index === conversation.length - 1
-                            ? '思考中...'
-                            : '已思考'}
+                            ? t.thinking
+                            : t.thoughtDone}
                         </Typography>
                       </Stack>
                     </StyledThinkingAccordionSummary>
@@ -1340,7 +1367,9 @@ const AiQaContent: React.FC<{
                     gap={mobile ? 1 : 3}
                   >
                     <Stack direction='row' gap={3} alignItems='center'>
-                      <span>生成于 {dayjs(item.update_time).fromNow()}</span>
+                      <span>
+                        {t.generatedAt} {dayjs(item.update_time).fromNow()}
+                      </span>
 
                       <IconCopy
                         sx={{ cursor: 'pointer' }}
@@ -1498,7 +1527,7 @@ const AiQaContent: React.FC<{
                 handleSearch();
               }
             }}
-            placeholder={placeholder}
+            placeholder={composerPlaceholder}
             autoComplete='off'
             sx={
               isWorkspaceLayout

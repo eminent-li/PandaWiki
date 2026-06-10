@@ -1,8 +1,9 @@
 'use client';
 import * as Sentry from '@sentry/nextjs';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ErrorPng from '@/assets/images/500.png';
 import Footer from '@/components/footer';
+import { getQaMessages, QaLanguage } from '@/locales/qa';
 import { lightTheme } from '@/theme';
 import { Box, Stack } from '@mui/material';
 import { ThemeProvider } from '@ctzhian/ui';
@@ -14,12 +15,23 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [language, setLanguage] = useState<QaLanguage>('zh-CN');
+
   useEffect(() => {
     // 只在生产环境下上报错误到 Sentry
     if (process.env.NODE_ENV === 'production') {
       Sentry.captureException(error);
     }
   }, [error]);
+
+  useEffect(() => {
+    const storedLanguage = window.localStorage.getItem('PANDA_WIKI_LANGUAGE');
+    if (storedLanguage === 'en-US' || storedLanguage === 'zh-CN') {
+      setLanguage(storedLanguage);
+    }
+  }, []);
+
+  const t = getQaMessages(language);
 
   return (
     <html lang='en'>
@@ -54,7 +66,7 @@ export default function GlobalError({
                 alignItems='center'
                 sx={{ color: 'text.tertiary', fontSize: 14, mt: 3 }}
               >
-                页面出错了 {error.digest}
+                {t.pageError} {error.digest}
               </Stack>
             </Stack>
 

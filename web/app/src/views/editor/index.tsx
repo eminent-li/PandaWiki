@@ -1,4 +1,6 @@
 'use client';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { postShareProV1ContributeSubmit } from '@/request/pro/ShareContribute';
 import { V1NodeDetailResp } from '@/request/types';
 import { message } from '@ctzhian/ui';
@@ -33,6 +35,8 @@ export const useWrapContext = () => {
 
 const DocEditor = () => {
   const { id } = useParams();
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const isWideScreen = useMediaQuery('(min-width:1400px)');
   const [saveLoading, setSaveLoading] = useState(false);
   const [nodeDetail, setNodeDetail] = useState<V1NodeDetailResp | null>(
@@ -62,7 +66,7 @@ const DocEditor = () => {
       captcha_token: token,
       content_type: contentType || 'html',
     }).then(() => {
-      message.success('保存成功, 即将关闭页面');
+      message.success(t.savedClosingPage);
       setTimeout(() => {
         setSaveLoading(false);
         try {

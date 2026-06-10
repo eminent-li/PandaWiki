@@ -1,4 +1,6 @@
 import { V1NodeDetailResp } from '@/request';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { Button, CircularProgress, Stack, TextField } from '@mui/material';
 import { Modal } from '@ctzhian/ui';
 import { useEffect, useState } from 'react';
@@ -12,6 +14,8 @@ interface SummaryProps {
 }
 
 const Summary = ({ open, onClose, updateDetail }: SummaryProps) => {
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const { nodeDetail } = useWrapContext();
   const [summary, setSummary] = useState(nodeDetail?.meta?.summary || '');
   const [loading, setLoading] = useState(false);
@@ -47,8 +51,8 @@ const Summary = ({ open, onClose, updateDetail }: SummaryProps) => {
     <Modal
       open={open}
       onCancel={handleClose}
-      title='智能摘要'
-      okText='保存'
+      title={t.smartSummary}
+      okText={t.save}
       okButtonProps={{
         disabled: loading || !edit,
       }}
@@ -78,7 +82,7 @@ const Summary = ({ open, onClose, updateDetail }: SummaryProps) => {
             setSummary(e.target.value);
             setEdit(true);
           }}
-          placeholder='请输入摘要'
+          placeholder={t.enterSummary}
         />
         <Button
           fullWidth
@@ -93,7 +97,7 @@ const Summary = ({ open, onClose, updateDetail }: SummaryProps) => {
             )
           }
         >
-          点击此处，AI 自动生成摘要
+          {t.aiGenerateSummary}
         </Button>
       </Stack>
     </Modal>

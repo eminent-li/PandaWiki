@@ -1,5 +1,7 @@
 'use effect';
 import { useBasePath } from '@/hooks';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { Modal, message } from '@ctzhian/ui';
 import { Box, FormLabel, TextField, Typography, styled } from '@mui/material';
 import { IconCorrection } from '@panda-wiki/icons';
@@ -62,6 +64,8 @@ export const StyledFormLabel = styled(FormLabel)(({ theme }) => ({
 
 const ConfirmModal = ({ open, onCancel, onOk }: ConfirmModalProps) => {
   const basePath = useBasePath();
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState(false);
 
@@ -84,7 +88,7 @@ const ConfirmModal = ({ open, onCancel, onOk }: ConfirmModalProps) => {
       const solution = await cap.solve();
       token = solution.token;
     } catch (error) {
-      message.error('验证失败');
+      message.error(t.verifyFailed);
       return;
     }
     return onOk(reason, token);
@@ -94,8 +98,8 @@ const ConfirmModal = ({ open, onCancel, onOk }: ConfirmModalProps) => {
     <Modal
       open={open}
       onCancel={onCancel}
-      title='确认提交'
-      okText='提交'
+      title={t.contributionConfirmTitle}
+      okText={t.submit}
       onOk={handleOk}
     >
       <StyledInfoBox>
@@ -103,21 +107,21 @@ const ConfirmModal = ({ open, onCancel, onOk }: ConfirmModalProps) => {
           <IconCorrection sx={{ fontSize: 20 }} />
         </StyledIconBox>
         <StyledContentBox>
-          <Typography className='title'>文档贡献流程</Typography>
+          <Typography className='title'>{t.contributionFlowTitle}</Typography>
           <Typography className='description'>
-            文档提交后将进入审核流程，你提交的内容在审核通过后会立即在前台展示，感谢你的贡献。
+            {t.contributionFlowDescription}
           </Typography>
         </StyledContentBox>
       </StyledInfoBox>
 
-      <StyledFormLabel required>更新说明</StyledFormLabel>
+      <StyledFormLabel required>{t.updateNotes}</StyledFormLabel>
       <TextField
         fullWidth
         multiline
         rows={3}
-        placeholder='请输入更新说明，帮助审核人员更好地理解您的修改...'
+        placeholder={t.updateNotesPlaceholder}
         value={reason}
-        helperText={reasonError ? '请输入更新说明' : ''}
+        helperText={reasonError ? t.updateNotesRequired : ''}
         error={reasonError}
         onChange={e => setReason(e.target.value)}
         sx={{

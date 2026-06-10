@@ -5,27 +5,8 @@ import NotFoundImg from '@/assets/images/404.png';
 import BlockImg from '@/assets/images/block.png';
 import { SxProps, Stack } from '@mui/material';
 import Image from 'next/image';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
-
-const CODE_MAP = {
-  40003: {
-    title: '无权限访问',
-    img: NoPermissionImg,
-  },
-  403: {
-    title: '当前网站已关闭访问',
-    img: BlockImg,
-  },
-  40004: {
-    title: '页面不存在',
-    img: NotFoundImg,
-  },
-};
-
-const DEFAULT_ERROR = {
-  title: '页面出错了',
-  img: ErrorPng,
-};
 
 export default function Error({
   sx,
@@ -36,7 +17,27 @@ export default function Error({
   reset?: () => void;
   sx?: SxProps;
 }) {
-  const { mobile } = useStore();
+  const { mobile, language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
+  const CODE_MAP = {
+    40003: {
+      title: t.noPermission,
+      img: NoPermissionImg,
+    },
+    403: {
+      title: t.siteClosed,
+      img: BlockImg,
+    },
+    40004: {
+      title: t.pageNotFound,
+      img: NotFoundImg,
+    },
+  };
+
+  const DEFAULT_ERROR = {
+    title: t.pageError,
+    img: ErrorPng,
+  };
   const errorInfo =
     CODE_MAP[(error.code ?? error.message) as '40003'] || DEFAULT_ERROR;
   return (

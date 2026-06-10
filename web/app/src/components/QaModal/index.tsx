@@ -17,6 +17,7 @@ import {
 import AiQaContent from './AiQaContent';
 import SearchDocContent from './SearchDocContent';
 import { useStore } from '@/provider';
+import { getQaMessages } from '@/locales/qa';
 
 interface SearchSuggestion {
   id: string;
@@ -76,8 +77,16 @@ const StyledTab = styled(Tab)(({ theme }) => ({
 }));
 
 const QaModal: React.FC<QaModalProps> = () => {
-  const { qaModalOpen, setQaModalOpen, kbDetail, mobile } = useStore();
+  const {
+    qaModalOpen,
+    setQaModalOpen,
+    kbDetail,
+    mobile,
+    language = 'zh-CN',
+    setLanguage,
+  } = useStore();
   const [searchMode, setSearchMode] = useState<'chat' | 'search'>('chat');
+  const t = getQaMessages(language);
   const inputRef = useRef<HTMLInputElement>(null);
   const aiQaInputRef = useRef<HTMLInputElement>(null);
   const searchParams = useSearchParams();
@@ -86,11 +95,14 @@ const QaModal: React.FC<QaModalProps> = () => {
   };
 
   const placeholder = useMemo(() => {
+    if (language === 'en-US') {
+      return t.askPlaceholder;
+    }
     return (
       kbDetail?.settings?.web_app_custom_style?.header_search_placeholder ||
-      '搜索...'
+      t.searchPlaceholder
     );
-  }, [kbDetail]);
+  }, [kbDetail, language, t.askPlaceholder, t.searchPlaceholder]);
 
   const hotSearch = useMemo(() => {
     const bannerConfig = kbDetail?.settings?.web_app_landing_configs?.find(
@@ -166,33 +178,49 @@ const QaModal: React.FC<QaModalProps> = () => {
             pb: 2.5,
           }}
         >
-          <StyledTabs
-            value={searchMode}
-            onChange={(_, value) => {
-              setSearchMode(value as 'chat' | 'search');
-            }}
-            variant='scrollable'
-            scrollButtons={false}
-          >
-            <StyledTab
-              label={
-                <Stack direction='row' gap={0.5} alignItems='center'>
-                  <IconZhinengwenda sx={{ fontSize: 16 }} />
-                  {!mobile && <span>智能问答</span>}
-                </Stack>
-              }
-              value='chat'
-            />
-            <StyledTab
-              label={
-                <Stack direction='row' gap={0.5} alignItems='center'>
-                  <IconJinsousuo sx={{ fontSize: 16 }} />
-                  {!mobile && <span>仅搜索文档</span>}
-                </Stack>
-              }
-              value='search'
-            />
-          </StyledTabs>
+          <Stack direction='row' gap={1.5} alignItems='center'>
+            <StyledTabs
+              value={searchMode}
+              onChange={(_, value) => {
+                setSearchMode(value as 'chat' | 'search');
+              }}
+              variant='scrollable'
+              scrollButtons={false}
+            >
+              <StyledTab
+                label={
+                  <Stack direction='row' gap={0.5} alignItems='center'>
+                    <IconZhinengwenda sx={{ fontSize: 16 }} />
+                    {!mobile && <span>{t.smartQa}</span>}
+                  </Stack>
+                }
+                value='chat'
+              />
+              <StyledTab
+                label={
+                  <Stack direction='row' gap={0.5} alignItems='center'>
+                    <IconJinsousuo sx={{ fontSize: 16 }} />
+                    {!mobile && <span>{t.searchDocs}</span>}
+                  </Stack>
+                }
+                value='search'
+              />
+            </StyledTabs>
+
+            <StyledTabs
+              value={language}
+              onChange={(_, value) => {
+                if (value) {
+                  setLanguage?.(value as 'zh-CN' | 'en-US');
+                }
+              }}
+              variant='scrollable'
+              scrollButtons={false}
+            >
+              <StyledTab label={t.chinese} value='zh-CN' />
+              <StyledTab label={t.english} value='en-US' />
+            </StyledTabs>
+          </Stack>
 
           {/* Esc按钮 */}
           {!mobile && (
@@ -212,7 +240,7 @@ const QaModal: React.FC<QaModalProps> = () => {
                 borderColor: alpha(theme.palette.text.primary, 0.1),
               })}
             >
-              Esc
+              {t.esc}
             </Button>
           )}
         </Box>
@@ -270,7 +298,7 @@ const QaModal: React.FC<QaModalProps> = () => {
               {!kbDetail?.settings?.conversation_setting
                 ?.copyright_hide_enabled &&
                 (kbDetail?.settings?.conversation_setting?.copyright_info ||
-                  '本网站由 PandaWiki 提供技术支持')}
+                  t.supportBy)}
             </Box>
           </Typography>
         </Box>

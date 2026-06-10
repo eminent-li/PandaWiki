@@ -1,9 +1,24 @@
+'use client';
+
 import notFound from '@/assets/images/404.png';
 import { FooterProvider } from '@/components/footer';
+import { getQaMessages, QaLanguage } from '@/locales/qa';
 import { Box, Stack } from '@mui/material';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
 export default function NotFound() {
+  const [language, setLanguage] = useState<QaLanguage>('zh-CN');
+
+  useEffect(() => {
+    const storedLanguage = window.localStorage.getItem('PANDA_WIKI_LANGUAGE');
+    if (storedLanguage === 'en-US' || storedLanguage === 'zh-CN') {
+      setLanguage(storedLanguage);
+    }
+  }, []);
+
+  const t = getQaMessages(language);
+
   return (
     <Box
       sx={{
@@ -28,7 +43,7 @@ export default function NotFound() {
           alignItems='center'
           sx={{ color: 'text.tertiary', fontSize: 14, mt: 3 }}
         >
-          页面不存在
+          {t.pageNotFound}
         </Stack>
       </Stack>
       <Box

@@ -30,6 +30,7 @@ import Logo from '@/assets/images/logo.png';
 import { FooterProvider } from '@/components/footer';
 import { IconDingDing, IconQiyeweixin } from '@/components/icons';
 import { IconGitHub1 } from '@panda-wiki/icons';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import {
   ConstsSourceType,
@@ -106,8 +107,15 @@ export default function Login() {
   const [authType, setAuthType] = useState<ConstsAuthType>();
   const [licenseEdition, setLicenseEdition] = useState<ConstsLicenseEdition>();
   const [sourceType, setSourceType] = useState<ConstsSourceType>();
-  const { kbDetail, themeMode, mobile = false, setNodeList } = useStore();
+  const {
+    kbDetail,
+    themeMode,
+    mobile = false,
+    setNodeList,
+    language = 'zh-CN',
+  } = useStore();
   const basePath = useBasePath();
+  const t = getQaMessages(language);
 
   const redirectUrl =
     typeof window !== 'undefined'
@@ -116,7 +124,7 @@ export default function Login() {
 
   const handleLogin = async () => {
     if (!password.trim()) {
-      message.error('请输入访问口令');
+      message.error(t.accessCodeRequired);
       return;
     }
     setLoading(true);
@@ -135,12 +143,12 @@ export default function Login() {
               [])
             : raw;
           setNodeList?.(Array.isArray(nodeList) ? nodeList : []);
-          message.success('认证成功');
+          message.success(t.authSuccess);
           window.open(redirectUrl, '_self');
         });
       });
     } catch (error) {
-      message.error('认证失败，请重试');
+      message.error(t.authFailedRetry);
     } finally {
       setLoading(false);
     }
@@ -241,12 +249,12 @@ export default function Login() {
               [])
             : raw;
           setNodeList?.(Array.isArray(nodeList) ? nodeList : []);
-          message.success('认证成功');
+          message.success(t.authSuccess);
           window.open(redirectUrl, '_self');
         });
       });
     } catch (error) {
-      message.error('认证失败，请重试');
+      message.error(t.authFailedRetry);
     } finally {
       setLoading(false);
     }
@@ -316,7 +324,7 @@ export default function Login() {
                   autoFocus
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder='请输入访问口令'
+                  placeholder={t.enterAccessCode}
                   disabled={loading}
                   slotProps={{
                     input: {
@@ -356,7 +364,7 @@ export default function Login() {
                   sx={{ mt: 5, height: '50px', fontSize: 16 }}
                   disabled={loading || !password.trim()}
                 >
-                  {loading ? '验证中...' : '认证访问'}
+                  {loading ? t.verifying : t.authenticateAccess}
                 </Button>
               </>
             )}
@@ -371,7 +379,7 @@ export default function Login() {
                     startIcon={<IconDingDing />}
                     sx={{ height: '50px', fontSize: 16 }}
                   >
-                    登录
+                    {t.login}
                   </Button>
                 )}
                 {sourceType === ConstsSourceType.SourceTypeFeishu && (
@@ -382,7 +390,7 @@ export default function Login() {
                     startIcon={<IconFeishu />}
                     sx={{ height: '50px', fontSize: 16 }}
                   >
-                    登录
+                    {t.login}
                   </Button>
                 )}
                 {sourceType === ConstsSourceType.SourceTypeWeCom && (
@@ -393,7 +401,7 @@ export default function Login() {
                     startIcon={<IconQiyeweixin />}
                     sx={{ height: '50px', fontSize: 16 }}
                   >
-                    登录
+                    {t.login}
                   </Button>
                 )}
                 {sourceType === ConstsSourceType.SourceTypeOAuth && (
@@ -403,7 +411,7 @@ export default function Login() {
                     onClick={handleOAuthLogin}
                     sx={{ height: '50px', fontSize: 16 }}
                   >
-                    登录
+                    {t.login}
                   </Button>
                 )}
                 {sourceType === ConstsSourceType.SourceTypeGitHub && (
@@ -414,7 +422,7 @@ export default function Login() {
                     startIcon={<IconGitHub1 />}
                     sx={{ height: '50px', fontSize: 16 }}
                   >
-                    登录
+                    {t.login}
                   </Button>
                 )}
 
@@ -426,7 +434,7 @@ export default function Login() {
                     startIcon={<CasIcon sx={{ fontSize: '28px !important' }} />}
                     sx={{ height: '50px', fontSize: 16 }}
                   >
-                    登录
+                    {t.login}
                   </Button>
                 )}
 
@@ -461,7 +469,7 @@ export default function Login() {
                             value={username}
                             autoFocus
                             onChange={e => setUsername(e.target.value)}
-                            placeholder='用户名'
+                            placeholder={t.username}
                             disabled={loading}
                             slotProps={{
                               input: {
@@ -486,7 +494,7 @@ export default function Login() {
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder='密码'
+                            placeholder={t.password}
                             disabled={loading}
                             slotProps={{
                               input: {
@@ -535,7 +543,7 @@ export default function Login() {
                               loading || !username.trim() || !password.trim()
                             }
                           >
-                            {loading ? '验证中...' : '登录'}
+                            {loading ? t.verifying : t.login}
                           </Button>
                         </>
                       );
@@ -554,7 +562,7 @@ export default function Login() {
                 mt: 2,
               }}
             >
-              需要认证以后才能访问
+              {t.authRequiredToAccess}
             </Box>
           </Stack>
         </Box>

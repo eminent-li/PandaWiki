@@ -1,6 +1,7 @@
 'use client';
 
 import { ITreeItem, KBDetail, NodeListItem, WidgetInfo } from '@/assets/type';
+import { QaLanguage } from '@/locales/qa';
 import { useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -29,11 +30,13 @@ interface StoreContextType {
   catalogShow?: boolean;
   tree?: ITreeItem[];
   themeMode?: 'light' | 'dark';
+  language?: QaLanguage;
   mobile?: boolean;
   nodeList?: NodeListItem[];
   setNodeList?: (list: NodeListItem[]) => void;
   setTree?: Dispatch<SetStateAction<ITreeItem[] | undefined>>;
   setCatalogShow?: (value: boolean) => void;
+  setLanguage?: (language: QaLanguage) => void;
   catalogWidth?: number;
   setCatalogWidth?: (value: number) => void;
   qaModalOpen?: boolean;
@@ -89,6 +92,7 @@ export default function StoreProvider({
   } = props;
 
   const NAV_ID_STORAGE_KEY = 'panda-wiki-selected-nav-id';
+  const LANGUAGE_STORAGE_KEY = 'PANDA_WIKI_LANGUAGE';
 
   // 使用 props 传入的 defaultNavId，避免 SSR 与 CSR 不一致导致 Hydration 错误
   const initialNavId = initialSelectedNavId;
@@ -141,6 +145,7 @@ export default function StoreProvider({
   const [catalogShow, setCatalogShow] = useState(
     catalogSettings?.catalog_visible !== 2,
   );
+  const [language, setLanguageState] = useState<QaLanguage>('zh-CN');
   const [isMobile, setIsMobile] = useState(mobile);
   const theme = useTheme();
   const mediaQueryResult = useMediaQuery(theme.breakpoints.down('lg'), {
@@ -157,6 +162,17 @@ export default function StoreProvider({
     const savedWidth = window.localStorage.getItem('CATALOG_WIDTH');
     if (Number(savedWidth) > 0) {
       setCatalogWidth(Number(savedWidth));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const storedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (storedLanguage === 'zh-CN' || storedLanguage === 'en-US') {
+      setLanguageState(storedLanguage);
     }
   }, []);
 
@@ -212,18 +228,27 @@ export default function StoreProvider({
     setHomeInlineQaConversationIdState(conversationId || '');
   };
 
+  const setLanguage = (nextLanguage: QaLanguage) => {
+    setLanguageState(nextLanguage);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+    }
+  };
+
   return (
     <StoreContext.Provider
       value={{
         widget,
         kbDetail,
         themeMode,
+        language,
         nodeList,
         catalogShow,
         setCatalogShow,
         mobile: isMobile,
         authInfo,
         setNodeList,
+        setLanguage,
         catalogWidth,
         tree,
         setTree,

@@ -1,6 +1,8 @@
 'use client';
 import Emoji from '@/components/emoji';
 import { useBasePath } from '@/hooks/useBasePath';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import {
   postShareV1CommonFileUpload,
   postShareV1CommonFileUploadUrl,
@@ -33,6 +35,8 @@ interface WrapProps {
 }
 
 const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const searchParams = useSearchParams();
   const contentType = searchParams.get('contentType') || 'html';
   const { nodeDetail, setNodeDetail, onSave } = useWrapContext();
@@ -84,7 +88,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
       onProgress?.({ progress: 1 });
       return Promise.resolve('/static-file/' + key);
     } catch (error) {
-      message.error('验证失败');
+      message.error(t.verifyFailed);
       return Promise.reject(error);
     }
   };
@@ -109,7 +113,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
       );
       return Promise.resolve('/static-file/' + key);
     } catch (error) {
-      message.error('验证失败');
+      message.error(t.verifyFailed);
       return Promise.reject(error);
     }
   };
@@ -153,7 +157,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
       const { from, to } = editorRef.editor.state.selection;
       const text = editorRef.editor.state.doc.textBetween(from, to, '\n');
       if (!text) {
-        message.error('请先选择文本');
+        message.error(t.selectTextFirst);
         return;
       }
       setSelectionText(text);
@@ -164,13 +168,13 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
   const checkRequiredFields = useCallback(
     (content?: string) => {
       if (!nodeDetail?.name?.trim()) {
-        message.error('请先输入文档名称');
+        message.error(t.enterDocumentNameFirst);
         return false;
       }
       const contentToCheck =
         content !== undefined ? content : nodeDetail?.content;
       if (!contentToCheck?.trim()) {
-        message.error('请先输入文档内容');
+        message.error(t.enterDocumentContentFirst);
         return false;
       }
       return true;
@@ -279,7 +283,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
             <TextField
               sx={{ flex: 1 }}
               value={nodeDetail?.name}
-              placeholder='请输入文档名称'
+              placeholder={t.enterDocumentName}
               slotProps={{
                 input: {
                   readOnly: !!id,
@@ -325,7 +329,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
                 {dayjs(defaultDetail?.created_at).format(
                   'YYYY-MM-DD HH:mm:ss',
                 )}{' '}
-                创建
+                {t.createdAtSuffix}
               </Stack>
             )}
 
@@ -336,7 +340,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
               sx={{ fontSize: 12, color: 'text.tertiary' }}
             >
               <IconZiti />
-              {characterCount} 字
+              {characterCount} {t.characterCountSuffix}
             </Stack>
             <Stack
               direction={'row'}
@@ -345,7 +349,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
               sx={{ fontSize: 12, color: 'text.tertiary' }}
             >
               <IconPageview1 sx={{ fontSize: 12 }} />
-              浏览量 {nodeDetail?.pv}
+              {t.pageViews.replace('{count}', String(nodeDetail?.pv ?? 0))}
             </Stack>
           </Stack>
           {editorRef.editor && (
@@ -356,7 +360,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
                   editor={editorRef.editor}
                   value={nodeDetail?.content || defaultDetail?.content || ''}
                   onUpload={handleUpload}
-                  placeholder='请输入文档内容'
+                  placeholder={t.enterDocumentContent}
                   onAceChange={value => {
                     updateDetail({
                       content: value,

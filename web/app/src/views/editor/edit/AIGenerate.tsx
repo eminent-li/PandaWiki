@@ -1,5 +1,7 @@
 import SSEClient from '@/utils/fetch';
 import { useBasePath } from '@/hooks/useBasePath';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { Editor, useTiptap, UseTiptapReturn } from '@ctzhian/tiptap';
 import { Modal } from '@ctzhian/ui';
 import { Box, Divider, Stack } from '@mui/material';
@@ -18,6 +20,8 @@ const AIGenerate = ({
   onClose,
   editorRef,
 }: AIGenerateProps) => {
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const sseClientRef = useRef<SSEClient<string> | null>(null);
   const baseUrl = useBasePath();
   const [loading, setLoading] = useState(false);
@@ -99,8 +103,8 @@ const AIGenerate = ({
     <Modal
       open={open}
       onCancel={onCancel}
-      title={'文本润色'}
-      okText='替换'
+      title={t.rephraseText}
+      okText={t.replace}
       width={1000}
       onOk={onSubmit}
       okButtonProps={{
@@ -131,7 +135,7 @@ const AIGenerate = ({
               color: 'text.tertiary',
             }}
           >
-            原文
+            {t.originalText}
           </Box>
           <Box
             sx={{
@@ -155,7 +159,7 @@ const AIGenerate = ({
               color: 'text.tertiary',
             }}
           >
-            润色后
+            {t.polishedText}
           </Box>
           <Box
             sx={{

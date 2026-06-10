@@ -1,12 +1,18 @@
 'use client';
 
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { Box, Skeleton } from '@mui/material';
 
 interface DocSkeletonProps {
   showSummary?: boolean;
 }
 
-const DocSkeleton = ({ showSummary = false }: DocSkeletonProps) => (
+const DocSkeleton = ({ showSummary = false }: DocSkeletonProps) => {
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
+
+  return (
   <>
     <Skeleton variant='rounded' width={'70%'} height={36} sx={{ mb: '10px' }} />
     <Skeleton variant='rounded' width={'50%'} height={20} sx={{ mb: 4 }} />
@@ -25,7 +31,7 @@ const DocSkeleton = ({ showSummary = false }: DocSkeletonProps) => (
         }}
       >
         <Box sx={{ fontWeight: 'bold', mb: 2, lineHeight: '22px' }}>
-          内容摘要
+          {t.summaryTitle}
         </Box>
         <Skeleton variant='rounded' height={16} sx={{ mb: 1 }} />
         <Skeleton variant='rounded' width={'30%'} height={16} />
@@ -53,6 +59,7 @@ const DocSkeleton = ({ showSummary = false }: DocSkeletonProps) => (
     <Skeleton variant='rounded' height={16} sx={{ mb: 1 }} />
     <Skeleton variant='rounded' height={16} sx={{ mb: 1 }} />
   </>
-);
+  );
+};
 
 export default DocSkeleton;

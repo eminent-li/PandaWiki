@@ -1,5 +1,7 @@
 'use client';
 
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { IconMianbaoxie } from '@panda-wiki/icons';
 import { Box, Stack } from '@mui/material';
 import Link from 'next/link';
@@ -18,6 +20,8 @@ const AdjacentDocNav = ({
   basePath,
   hasCommentSection = false,
 }: AdjacentDocNavProps) => {
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   if (!prev && !next) return null;
 
   return (
@@ -58,7 +62,7 @@ const AdjacentDocNav = ({
               textAlign: 'left',
             }}
           >
-            上一篇：{prev.name}
+            {t.previousDoc.replace('{name}', prev.name)}
           </Box>
         </Box>
       ) : (
@@ -89,7 +93,7 @@ const AdjacentDocNav = ({
               textAlign: 'right',
             }}
           >
-            下一篇：{next.name}
+            {t.nextDoc.replace('{name}', next.name)}
           </Box>
           <IconMianbaoxie sx={{ flexShrink: 0, fontSize: 14 }} />
         </Box>

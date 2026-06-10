@@ -2,11 +2,13 @@ import React from 'react';
 import { Stack } from '@mui/material';
 import Image from 'next/image';
 
+import { getQaMessages } from '@/locales/qa';
 import NoPermissionImg from '@/assets/images/no-permission.png';
 import { useStore } from '@/provider';
 
 const NoPermission = ({ catalogShow }: { catalogShow: boolean }) => {
-  const { catalogWidth, mobile } = useStore();
+  const { catalogWidth, mobile, language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   return (
     <Stack
       style={{
@@ -37,7 +39,7 @@ const NoPermission = ({ catalogShow }: { catalogShow: boolean }) => {
         alignItems='center'
         sx={{ color: 'text.tertiary', fontSize: 14, mt: 3 }}
       >
-        无权限访问
+        {t.noPermission}
       </Stack>
     </Stack>
   );

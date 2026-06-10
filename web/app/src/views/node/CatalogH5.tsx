@@ -1,6 +1,7 @@
 'use client';
 
 import { IconNav } from '@/components/icons';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { filterTreeBySearch } from '@/utils';
 import { addExpandState } from '@/utils/tree';
@@ -17,7 +18,9 @@ const CatalogH5 = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const params = useParams() || {};
   const id = params.id as string;
-  const { tree: initialTree, kbDetail, nodeList } = useStore();
+  const { tree: initialTree, kbDetail, nodeList, language = 'zh-CN' } =
+    useStore();
+  const t = getQaMessages(language);
   const debouncedSearchTerm = useDebounce(searchTerm, { wait: 300 });
 
   const catalogSetting = kbDetail?.settings?.catalog_settings;
@@ -82,7 +85,7 @@ const CatalogH5 = () => {
               color: 'text.primary',
             }}
           >
-            目录
+            {t.catalog}
           </Box>
         </Stack>
         <IconXiajiantou
@@ -121,7 +124,7 @@ const CatalogH5 = () => {
             },
           }}
           size='small'
-          placeholder='搜索'
+          placeholder={t.search}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           sx={{

@@ -17,6 +17,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AiQaContent from '@/components/QaModal/AiQaContent';
 import SearchDocContent from '@/components/QaModal/SearchDocContent';
+import { getQaMessages } from '@/locales/qa';
 
 const StyledTabs = styled(Tabs)(({ theme }) => ({
   minHeight: 'auto',
@@ -70,6 +71,7 @@ const MAX_HISTORY_ITEMS = 8;
 const HomeInlineQaPanel = () => {
   const {
     kbDetail,
+    language = 'zh-CN',
     mobile,
     homeInlineQaOpen,
     homeInlineQaMode,
@@ -77,6 +79,7 @@ const HomeInlineQaPanel = () => {
     homeInlineQaConversationId,
     triggerHomeInlineQa,
     expandHomeInlineQa,
+    setLanguage,
     setHomeInlineQaConversationId,
   } = useStore();
   const searchParams = useSearchParams();
@@ -95,17 +98,21 @@ const HomeInlineQaPanel = () => {
   const [historyItems, setHistoryItems] = useState<ConversationHistoryItem[]>(
     [],
   );
+  const t = getQaMessages(language);
 
   const historyStorageKey = useMemo(() => {
     return `panda-wiki-home-conversation-history:${kbDetail?.base_url || kbDetail?.name || 'default'}`;
   }, [kbDetail?.base_url, kbDetail?.name]);
 
   const placeholder = useMemo(() => {
+    if (language === 'en-US') {
+      return t.askPlaceholder;
+    }
     return (
       kbDetail?.settings?.web_app_custom_style?.header_search_placeholder ||
-      '搜索...'
+      t.searchPlaceholder
     );
-  }, [kbDetail]);
+  }, [kbDetail, language, t.askPlaceholder, t.searchPlaceholder]);
 
   const hotSearch = useMemo(() => {
     const bannerConfig = kbDetail?.settings?.web_app_landing_configs?.find(
@@ -258,7 +265,7 @@ const HomeInlineQaPanel = () => {
           gap={1.5}
         >
           <Typography color='text.secondary' sx={{ fontSize: 14 }}>
-            问答区已收起，可随时重新展开查看上一轮回答。
+            {t.collapsedHint}
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
             {historyItems.slice(0, 3).map(item => (
@@ -289,7 +296,7 @@ const HomeInlineQaPanel = () => {
                 whiteSpace: 'nowrap',
               }}
             >
-              重新展开问答区
+              {t.reopenQaPanel}
             </Button>
           </Stack>
         </Stack>
@@ -386,7 +393,7 @@ const HomeInlineQaPanel = () => {
                   boxShadow: 'none',
                 }}
               >
-                新对话
+                {t.newChat}
               </Button>
               <Stack gap={1}>
                 <Typography
@@ -394,7 +401,7 @@ const HomeInlineQaPanel = () => {
                   color='text.secondary'
                   sx={{ px: 0.5, fontWeight: 500 }}
                 >
-                  历史对话
+                  {t.history}
                 </Typography>
                 {historyItems.length === 0 && (
                   <Box
@@ -410,7 +417,7 @@ const HomeInlineQaPanel = () => {
                     }}
                   >
                     <Typography variant='body2' sx={{ fontSize: 13 }}>
-                      暂无历史会话
+                      {t.noHistory}
                     </Typography>
                   </Box>
                 )}
@@ -474,7 +481,7 @@ const HomeInlineQaPanel = () => {
                         color='text.secondary'
                         sx={{ fontSize: 11 }}
                       >
-                        {new Date(item.updatedAt).toLocaleString('zh-CN', {
+                        {new Date(item.updatedAt).toLocaleString(language, {
                           month: '2-digit',
                           day: '2-digit',
                           hour: '2-digit',
@@ -483,11 +490,11 @@ const HomeInlineQaPanel = () => {
                       </Typography>
                     </Button>
                   ))}
-                </Stack>
-              </Stack>
-            </Stack>
-          </Stack>
-
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  gap={1.5}
+                  alignItems={{ xs: 'stretch', sm: 'center' }}
+                >
           <Stack
             sx={{
               minWidth: 0,
@@ -537,7 +544,7 @@ const HomeInlineQaPanel = () => {
                   label={
                     <Stack direction='row' gap={0.5} alignItems='center'>
                       <IconZhinengwenda sx={{ fontSize: 16 }} />
-                      {!mobile && <span>智能问答</span>}
+                        {!mobile && <span>{t.smartQa}</span>}
                     </Stack>
                   }
                   value='chat'
@@ -546,7 +553,7 @@ const HomeInlineQaPanel = () => {
                   label={
                     <Stack direction='row' gap={0.5} alignItems='center'>
                       <IconJinsousuo sx={{ fontSize: 16 }} />
-                      {!mobile && <span>仅搜索文档</span>}
+                        {!mobile && <span>{t.searchDocs}</span>}
                     </Stack>
                   }
                   value='search'
@@ -615,7 +622,7 @@ const HomeInlineQaPanel = () => {
               >
                 <Typography variant='caption' color='text.disabled'>
                   {kbDetail?.settings?.conversation_setting?.copyright_info ||
-                    '本网站由 PandaWiki 提供技术支持'}
+                    t.supportBy}
                 </Typography>
               </Box>
             )}

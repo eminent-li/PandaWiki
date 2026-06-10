@@ -1,6 +1,8 @@
 'use client';
 
 import { useBasePath } from '@/hooks';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { postShareV1CommonFileUpload } from '@/request/ShareFile';
 import { message } from '@ctzhian/ui';
 import data from '@emoji-mart/data';
@@ -53,7 +55,7 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
       value,
       onChange,
       onImagesChange,
-      placeholder = '请输入评论',
+      placeholder = t.enterComment,
       error,
       helperText,
       onFocus,
@@ -63,6 +65,8 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
     },
     ref,
   ) => {
+    const { language = 'zh-CN' } = useStore();
+    const t = getQaMessages(language);
     const theme = useTheme();
     const basePath = useBasePath();
     const [images, setImages] = useState<ImageItem[]>([]);
@@ -78,7 +82,9 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
 
       const remainingSlots = maxImages - images.length;
       if (remainingSlots <= 0) {
-        message.warning(`最多只能上传 ${maxImages} 张图片`);
+        message.warning(
+          t.commentImageLimit.replace('{count}', String(maxImages)),
+        );
         return;
       }
 
@@ -91,13 +97,13 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
           // 验证文件类型（只允许 jpg、jpeg、png、webp）
           const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
           if (!allowedTypes.includes(file.type)) {
-            message.error('只支持上传 jpg、jpeg、png、webp 格式的图片');
+            message.error(t.commentImageTypeError);
             continue;
           }
 
           // 验证文件大小 (10MB)
           if (file.size > 10 * 1024 * 1024) {
-            message.error('图片大小不能超过 10MB');
+            message.error(t.imageTooLarge);
             continue;
           }
 
@@ -116,7 +122,7 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
         setImages(updatedImages);
         onImagesChange?.(updatedImages);
       } catch (error: any) {
-        message.error(error.message || '图片选择失败');
+        message.error(error.message || t.imageSelectFailed);
       }
     };
 
@@ -143,7 +149,7 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
               const solution = await cap.solve();
               token = solution.token;
             } catch (error) {
-              message.error('验证失败');
+              message.error(t.verifyFailed);
               setUploading(false);
               return Promise.reject(error);
             }
@@ -163,7 +169,7 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
 
         return uploadedUrls;
       } catch (error: any) {
-        message.error(error.message || '图片上传失败');
+        message.error(error.message || t.uploadFailed);
         throw error;
       } finally {
         setUploading(false);

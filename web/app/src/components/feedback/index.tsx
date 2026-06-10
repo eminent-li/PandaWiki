@@ -1,4 +1,5 @@
 import { ConversationItem } from '@/assets/type';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { Box, Stack, TextField } from '@mui/material';
 import { Modal } from '@ctzhian/ui';
@@ -24,7 +25,8 @@ const Feedback = ({
   data,
   tags: propsTags,
 }: FeedbackProps) => {
-  const { themeMode, kbDetail } = useStore();
+  const { themeMode, kbDetail, language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const [type, setType] = useState<string>('');
   const [content, setContent] = useState('');
 
@@ -49,9 +51,9 @@ const Feedback = ({
     <Modal
       open={open}
       onCancel={handleCancel}
-      title='反馈意见'
-      cancelText='取消'
-      okText='提交'
+      title={t.feedbackTitle}
+      cancelText={t.cancel}
+      okText={t.submit}
       onOk={handleSubmit}
       cancelButtonProps={{
         sx: {
@@ -107,7 +109,7 @@ const Feedback = ({
           multiline
           rows={4}
           size='small'
-          placeholder='请输入反馈内容'
+          placeholder={t.feedbackPlaceholder}
           value={content}
           sx={{
             '.MuiInputBase-root': {

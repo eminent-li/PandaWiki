@@ -1,6 +1,7 @@
 'use client';
 import feedback from '@/assets/images/feedback.png';
 import Footer from '@/components/footer';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { postShareV1ChatFeedback } from '@/request/ShareChat';
 import { DomainFeedbackRequest } from '@/request/types';
@@ -12,7 +13,8 @@ import { useEffect, useState } from 'react';
 
 const Feedback = () => {
   const searchParams = useSearchParams();
-  const { kbDetail } = useStore();
+  const { kbDetail, language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const message_id = searchParams.get('message_id') || '';
   const conversation_id = searchParams.get('conversation_id') || '';
   const score = parseInt(searchParams.get('score') || '-1') as -1 | 1;
@@ -35,7 +37,7 @@ const Feedback = () => {
     };
     await postShareV1ChatFeedback(data);
     setSuccess(true);
-    message.success('反馈成功');
+    message.success(t.feedbackSuccess);
   };
 
   useEffect(() => {
@@ -70,7 +72,7 @@ const Feedback = () => {
                 mt: 2,
               }}
             >
-              感谢您的反馈！
+              {t.thankYouFeedback}
             </Box>
           </Box>
         ) : (
@@ -82,7 +84,7 @@ const Feedback = () => {
                 mb: 2,
               }}
             >
-              问题类型
+              {t.issueType}
             </Box>
             <Stack
               direction='row'
@@ -121,7 +123,7 @@ const Feedback = () => {
                 my: 2,
               }}
             >
-              反馈内容
+              {t.feedbackContent}
             </Box>
             <Box
               sx={{
@@ -137,7 +139,7 @@ const Feedback = () => {
                 multiline
                 rows={8}
                 size='small'
-                placeholder='请输入反馈内容'
+                placeholder={t.feedbackPlaceholder}
                 value={content}
                 sx={{
                   '.MuiInputBase-root': {
@@ -175,7 +177,7 @@ const Feedback = () => {
               }}
               onClick={handleSubmit}
             >
-              提交
+              {t.submit}
             </Button>
           </Box>
         )}

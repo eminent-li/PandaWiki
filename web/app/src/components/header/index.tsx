@@ -2,6 +2,7 @@
 
 import Logo from '@/assets/images/logo.png';
 import { useBasePath } from '@/hooks';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { postShareProV1AuthLogout } from '@/request/pro/ShareAuth';
 import { getImagePath } from '@/utils/getImagePath';
@@ -23,6 +24,8 @@ interface HeaderProps {
 
 const LogoutButton = () => {
   const [open, setOpen] = useState(false);
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const handleLogout = () => {
     return postShareProV1AuthLogout().then(() => {
       // 使用当前页面的协议（http 或 https）
@@ -37,19 +40,19 @@ const LogoutButton = () => {
         title={
           <Stack direction='row' alignItems='center' gap={1}>
             <ErrorIcon sx={{ fontSize: 24, color: 'warning.main' }} />
-            <Box sx={{ mt: '2px' }}>提示</Box>
+            <Box sx={{ mt: '2px' }}>{t.tips}</Box>
           </Stack>
         }
         open={open}
-        okText='确定'
-        cancelText='取消'
+        okText={t.confirm}
+        cancelText={t.cancel}
         onCancel={() => setOpen(false)}
         onOk={handleLogout}
         closable={false}
       >
-        <Box sx={{ pl: 4 }}>确定要退出登录吗？</Box>
+        <Box sx={{ pl: 4 }}>{t.logoutConfirm}</Box>
       </Modal>
-      <Tooltip title='退出登录' arrow>
+      <Tooltip title={t.logout} arrow>
         <IconButton size='small' onClick={() => setOpen(true)}>
           <IconDengchu
             sx={theme => ({

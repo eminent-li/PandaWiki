@@ -1,4 +1,6 @@
 'use client';
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { V1NodeDetailResp } from '@/request/types';
 import { Ellipsis } from '@ctzhian/ui';
 import { Box, Button, Skeleton, Stack } from '@mui/material';
@@ -14,6 +16,8 @@ interface HeaderProps {
 
 const Header = ({ detail, handleSave }: HeaderProps) => {
   const firstLoad = useRef(true);
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
 
   const { catalogOpen, nodeDetail, setCatalogOpen, saveLoading } =
     useWrapContext();
@@ -89,7 +93,7 @@ const Header = ({ detail, handleSave }: HeaderProps) => {
             startIcon={<IconBaocun />}
             onClick={handleSave}
           >
-            保存
+            {t.save}
           </Button>
         </Stack>
       </Stack>

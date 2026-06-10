@@ -42,6 +42,8 @@ const Toc = ({
   scrollToHeading,
   isMarkdown,
 }: TocProps) => {
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const [open, setOpen] = useState(false);
   const levels = Array.from(
     new Set(headings.map(it => it.level).sort((a, b) => a - b)),
@@ -124,7 +126,7 @@ const Toc = ({
             pb: 0,
           }}
         >
-          <Box>内容大纲</Box>
+          <Box>{t.tableOfContents}</Box>
           <IconButton
             size='small'
             onClick={() => {

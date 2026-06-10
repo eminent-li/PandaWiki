@@ -1,4 +1,5 @@
 'use client';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { useBasePath } from '@/hooks';
 import { Modal } from '@ctzhian/ui';
@@ -20,18 +21,19 @@ import { useState } from 'react';
 const DocFab = () => {
   const pathname = usePathname();
   const { id: docId } = useParams() || {};
-  const { kbDetail, mobile } = useStore();
+  const { kbDetail, mobile, language = 'zh-CN' } = useStore();
   const [showActions, setShowActions] = useState(false);
   const [contentType, setContentType] = useState<'html' | 'md'>('html');
   const [openSelectContentTypeModal, setOpenSelectContentTypeModal] =
     useState(false);
   const basePath = useBasePath();
+  const t = getQaMessages(language);
   if (mobile) return null;
 
   return (
     <>
       <Modal
-        title='新建文档类型'
+        title={t.newDocumentType}
         open={openSelectContentTypeModal}
         onCancel={() => {
           setOpenSelectContentTypeModal(false);
@@ -52,7 +54,7 @@ const DocFab = () => {
           <FormControlLabel
             value='html'
             control={<Radio size='small' />}
-            label='富文本'
+            label={t.richText}
           />
           <FormControlLabel
             value='md'
@@ -77,7 +79,7 @@ const DocFab = () => {
               in={showActions}
               style={{ transitionDelay: showActions ? '100ms' : '0ms' }}
             >
-              <Tooltip title='创建文档' placement='left' arrow>
+              <Tooltip title={t.createDocument} placement='left' arrow>
                 <Fab
                   color='primary'
                   size='small'
@@ -94,7 +96,7 @@ const DocFab = () => {
                 in={showActions}
                 style={{ transitionDelay: showActions ? '40ms' : '0ms' }}
               >
-                <Tooltip title='编辑文档' placement='left' arrow>
+                <Tooltip title={t.editDocument} placement='left' arrow>
                   <Fab
                     color='primary'
                     size='small'

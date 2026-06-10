@@ -3,13 +3,43 @@
 import { Banner } from '@panda-wiki/ui';
 import dynamic from 'next/dynamic';
 import { DomainRecommendNodeListResp } from '@/request/types';
+import { getQaMessages, QaLanguage } from '@/locales/qa';
 import { convertToTree } from '@/utils/tree';
 import { useStore } from '@/provider';
 import { useBasePath } from '@/hooks';
 import { getImagePath } from '@/utils/getImagePath';
-const handleFaqProps = (config: any = {}) => {
+
+type HomeFallbackMessages = ReturnType<typeof getHomeFallbackMessages>;
+
+const getHomeFallbackMessages = (language: QaLanguage) => {
+  const t = getQaMessages(language);
+
   return {
-    title: config.title || '链接组',
+    linkGroup: t.linkGroup,
+    basicDocCard: t.basicDocCard,
+    noSummary: t.noSummary,
+    folderCard: t.folderCard,
+    navCard: t.navCard,
+    simpleDocCard: t.simpleDocCard,
+    carousel: t.carousel,
+    heading: t.heading,
+    caseCard: t.caseCard,
+    metricsCard: t.metricsCard,
+    featureCard: t.featureCard,
+    imageTextLeft: t.imageTextLeft,
+    imageTextRight: t.imageTextRight,
+    commentCard: t.commentCard,
+    blockGrid: t.blockGrid,
+    commonQuestions: t.commonQuestions,
+  };
+};
+
+const handleFaqProps = (
+  config: any = {},
+  messages: HomeFallbackMessages,
+) => {
+  return {
+    title: config.title || messages.linkGroup,
     items:
       config.list?.map((item: any) => ({
         question: item.question,
@@ -22,14 +52,15 @@ const handleBasicDocProps = (
   config: any = {},
   docs: DomainRecommendNodeListResp[],
   basePath: string,
+  messages: HomeFallbackMessages,
 ) => {
   return {
-    title: config.title || '文档摘要卡片',
+    title: config.title || messages.basicDocCard,
     basePath,
     items:
       docs?.map(item => ({
         ...item,
-        summary: item.summary || '暂无摘要',
+        summary: item.summary || messages.noSummary,
       })) || [],
   };
 };
@@ -38,9 +69,10 @@ const handleDirDocProps = (
   config: any = {},
   docs: DomainRecommendNodeListResp[],
   basePath: string,
+  messages: HomeFallbackMessages,
 ) => {
   return {
-    title: config.title || '文件夹卡片',
+    title: config.title || messages.folderCard,
     basePath,
     items:
       docs?.map(item => ({
@@ -58,9 +90,10 @@ const handleNavDocProps = (
   config: any = {},
   docs: DomainRecommendNodeListResp[],
   basePath: string,
+  messages: HomeFallbackMessages,
 ) => {
   return {
-    title: config.title || '目录卡片',
+    title: config.title || messages.navCard,
     basePath,
     items:
       docs?.map(item => ({
@@ -77,9 +110,10 @@ const handleSimpleDocProps = (
   config: any = {},
   docs: DomainRecommendNodeListResp[],
   basePath: string,
+  messages: HomeFallbackMessages,
 ) => {
   return {
-    title: config.title || '简易文档卡片',
+    title: config.title || messages.simpleDocCard,
     basePath,
     items:
       docs?.map(item => ({
@@ -88,9 +122,13 @@ const handleSimpleDocProps = (
   };
 };
 
-const handleCarouselProps = (config: any = {}, basePath: string) => {
+const handleCarouselProps = (
+  config: any = {},
+  basePath: string,
+  messages: HomeFallbackMessages,
+) => {
   return {
-    title: config.title || '轮播图',
+    title: config.title || messages.carousel,
     items:
       config.list?.map((item: any) => ({
         id: item.id,
@@ -117,36 +155,46 @@ const handleBannerProps = (config: any = {}, basePath: string) => {
   };
 };
 
-const handleTextProps = (config: any = {}) => {
+const handleTextProps = (config: any = {}, messages: HomeFallbackMessages) => {
   return {
-    title: config.title || '标题',
+    title: config.title || messages.heading,
   };
 };
 
-const handleCaseProps = (config: any = {}) => {
+const handleCaseProps = (config: any = {}, messages: HomeFallbackMessages) => {
   return {
-    title: config.title || '案例',
+    title: config.title || messages.caseCard,
     items: config.list || [],
   };
 };
 
-const handleMetricsProps = (config: any = {}) => {
+const handleMetricsProps = (
+  config: any = {},
+  messages: HomeFallbackMessages,
+) => {
   return {
-    title: config.title || '指标',
+    title: config.title || messages.metricsCard,
     items: config.list || [],
   };
 };
 
-const handleFeatureProps = (config: any = {}) => {
+const handleFeatureProps = (
+  config: any = {},
+  messages: HomeFallbackMessages,
+) => {
   return {
-    title: config.title || '产品特性',
+    title: config.title || messages.featureCard,
     items: config.list || [],
   };
 };
 
-const handleImgTextProps = (config: any = {}, basePath: string) => {
+const handleImgTextProps = (
+  config: any = {},
+  basePath: string,
+  messages: HomeFallbackMessages,
+) => {
   return {
-    title: config.title || '左图右字',
+    title: config.title || messages.imageTextLeft,
     item: {
       ...config.item,
       url: getImagePath(config.item?.url, basePath),
@@ -155,9 +203,13 @@ const handleImgTextProps = (config: any = {}, basePath: string) => {
   };
 };
 
-const handleTextImgProps = (config: any = {}, basePath: string) => {
+const handleTextImgProps = (
+  config: any = {},
+  basePath: string,
+  messages: HomeFallbackMessages,
+) => {
   return {
-    title: config.title || '右图左字',
+    title: config.title || messages.imageTextRight,
     item: {
       ...config.item,
       url: getImagePath(config.item?.url, basePath),
@@ -166,9 +218,13 @@ const handleTextImgProps = (config: any = {}, basePath: string) => {
   };
 };
 
-const handleCommentProps = (config: any = {}, basePath: string) => {
+const handleCommentProps = (
+  config: any = {},
+  basePath: string,
+  messages: HomeFallbackMessages,
+) => {
   return {
-    title: config.title || '评论卡片',
+    title: config.title || messages.commentCard,
     items:
       config.list?.map((item: any) => ({
         ...item,
@@ -177,9 +233,13 @@ const handleCommentProps = (config: any = {}, basePath: string) => {
   };
 };
 
-const handleBlockGridProps = (config: any = {}, basePath: string) => {
+const handleBlockGridProps = (
+  config: any = {},
+  basePath: string,
+  messages: HomeFallbackMessages,
+) => {
   return {
-    title: config.title || '区块网格',
+    title: config.title || messages.blockGrid,
     basePath,
     items:
       config.list?.map((item: any) => ({
@@ -189,9 +249,12 @@ const handleBlockGridProps = (config: any = {}, basePath: string) => {
   };
 };
 
-const handleQuestionProps = (config: any = {}) => {
+const handleQuestionProps = (
+  config: any = {},
+  messages: HomeFallbackMessages,
+) => {
   return {
-    title: config.title || '常见问题',
+    title: config.title || messages.commonQuestions,
     items: config.list || [],
   };
 };
@@ -221,8 +284,14 @@ const componentMap = {
 
 const Welcome = () => {
   const basePath = useBasePath();
-  const { mobile = false, kbDetail, triggerHomeInlineQa } = useStore();
+  const {
+    mobile = false,
+    kbDetail,
+    triggerHomeInlineQa,
+    language = 'zh-CN',
+  } = useStore();
   const settings = kbDetail?.settings;
+  const fallbackMessages = getHomeFallbackMessages(language);
   const onBannerSearch = (
     searchText: string,
     type: 'chat' | 'search' = 'chat',
@@ -260,17 +329,17 @@ const Welcome = () => {
 
     switch (data.type) {
       case 'faq':
-        return handleFaqProps(config);
+        return handleFaqProps(config, fallbackMessages);
       case 'basic_doc':
-        return handleBasicDocProps(config, data.nodes, basePath);
+        return handleBasicDocProps(config, data.nodes, basePath, fallbackMessages);
       case 'dir_doc':
-        return handleDirDocProps(config, data.nodes, basePath);
+        return handleDirDocProps(config, data.nodes, basePath, fallbackMessages);
       case 'nav_doc':
-        return handleNavDocProps(config, data.nodes, basePath);
+        return handleNavDocProps(config, data.nodes, basePath, fallbackMessages);
       case 'simple_doc':
-        return handleSimpleDocProps(config, data.nodes, basePath);
+        return handleSimpleDocProps(config, data.nodes, basePath, fallbackMessages);
       case 'carousel':
-        return handleCarouselProps(config, basePath);
+        return handleCarouselProps(config, basePath, fallbackMessages);
       case 'banner':
         return {
           ...handleBannerProps(config, basePath),
@@ -281,24 +350,24 @@ const Welcome = () => {
           })),
         };
       case 'text':
-        return handleTextProps(config);
+        return handleTextProps(config, fallbackMessages);
       case 'case':
-        return handleCaseProps(config);
+        return handleCaseProps(config, fallbackMessages);
       case 'metrics':
-        return handleMetricsProps(config);
+        return handleMetricsProps(config, fallbackMessages);
       case 'feature':
-        return handleFeatureProps(config);
+        return handleFeatureProps(config, fallbackMessages);
       case 'text_img':
-        return handleTextImgProps(config, basePath);
+        return handleTextImgProps(config, basePath, fallbackMessages);
       case 'img_text':
-        return handleImgTextProps(config, basePath);
+        return handleImgTextProps(config, basePath, fallbackMessages);
       case 'comment':
-        return handleCommentProps(config, basePath);
+        return handleCommentProps(config, basePath, fallbackMessages);
       case 'block_grid':
-        return handleBlockGridProps(config, basePath);
+        return handleBlockGridProps(config, basePath, fallbackMessages);
       case 'question':
         return {
-          ...handleQuestionProps(config),
+          ...handleQuestionProps(config, fallbackMessages),
           onSearch: (text: string) => {
             onBannerSearch(text, 'chat');
           },

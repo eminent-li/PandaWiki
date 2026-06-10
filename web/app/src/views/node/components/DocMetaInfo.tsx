@@ -1,5 +1,7 @@
 'use client';
 
+import { getQaMessages } from '@/locales/qa';
+import { useStore } from '@/provider';
 import { ConstsCopySetting, V1ShareNodeDetailResp } from '@/request/types';
 import { Box, IconButton, Stack, Tooltip } from '@mui/material';
 import { IconFuzhi, IconWenjian, IconWenjianjia } from '@panda-wiki/icons';
@@ -19,7 +21,11 @@ const DocMetaInfo = ({
   characterCount,
   kbDetailCopySetting,
   onCopyDocMd,
-}: DocMetaInfoProps) => (
+}: DocMetaInfoProps) => {
+  const { language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
+
+  return (
   <>
     <Stack
       direction='row'
@@ -57,9 +63,9 @@ const DocMetaInfo = ({
         {info?.created_at && (
           <Box>
             {info?.creator_account === 'admin'
-              ? '管理员'
+              ? t.admin
               : info?.creator_account}{' '}
-            {dayjs(info?.created_at).fromNow()}创建
+            {dayjs(info?.created_at).fromNow()} {t.createdAtSuffix}
           </Box>
         )}
         {info?.updated_at && info.updated_at.slice(0, 1) !== '0' && (
@@ -67,28 +73,28 @@ const DocMetaInfo = ({
             <Box>·</Box>
             <Box>
               {info?.publisher_account === 'admin'
-                ? '管理员'
+                ? t.admin
                 : info?.publisher_account}{' '}
-              {dayjs(info.updated_at).fromNow()}更新
+              {dayjs(info.updated_at).fromNow()} {t.updatedAtSuffix}
             </Box>
           </>
         )}
         {!!characterCount && characterCount > 0 && (
           <>
             <Box>·</Box>
-            <Box>{characterCount} 字</Box>
+            <Box>{characterCount} {t.characterCountSuffix}</Box>
           </>
         )}
         {(info.pv ?? 0) > 0 && (
           <>
             <Box>·</Box>
-            <Box>浏览量 {info.pv}</Box>
+            <Box>{t.pageViews.replace('{count}', String(info.pv))}</Box>
           </>
         )}
       </Stack>
       {info?.type === 2 &&
         kbDetailCopySetting !== ConstsCopySetting.CopySettingDisabled && (
-          <Tooltip title='复制 MarkDown 格式' arrow placement='top'>
+          <Tooltip title={t.copyMarkdown} arrow placement='top'>
             <IconButton size='small' onClick={onCopyDocMd}>
               <IconFuzhi sx={{ fontSize: 16 }} />
             </IconButton>
@@ -96,6 +102,7 @@ const DocMetaInfo = ({
         )}
     </Stack>
   </>
-);
+  );
+};
 
 export default DocMetaInfo;

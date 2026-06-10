@@ -2,6 +2,7 @@
 import Logo from '@/assets/images/logo.png';
 import noDocImage from '@/assets/images/no-doc.png';
 import { useBasePath } from '@/hooks';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { postShareV1ChatSearch } from '@/request/ShareChatSearch';
 import { DomainNodeContentChunkSSE } from '@/request/types';
@@ -80,8 +81,9 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
   inputRef,
   placeholder,
 }) => {
-  const { kbDetail } = useStore();
+  const { kbDetail, language = 'zh-CN' } = useStore();
   const basePath = useBasePath();
+  const t = getQaMessages(language);
   // 模糊搜索相关状态
   const [fuzzySuggestions, setFuzzySuggestions] = useState<string[]>([]);
   const [showFuzzySuggestions, setShowFuzzySuggestions] = useState(false);
@@ -146,7 +148,7 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
       const solution = await cap.solve();
       token = solution.token;
     } catch (error) {
-      message.error('验证失败');
+      message.error(t.verifyFailed);
       setIsSearching(false);
       return;
     }
@@ -340,7 +342,7 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
               fontSize: 14,
             }}
           >
-            共找到 {searchResults.length} 个结果
+            {t.resultsFound.replace('{count}', String(searchResults.length))}
           </Typography>
 
           {/* 搜索结果列表 */}
@@ -402,7 +404,7 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {result.summary || '暂无摘要'}
+                    {result.summary || t.noSummary}
                   </Typography>
                 </Stack>
                 <IconMianbaoxie sx={{ fontSize: 12 }} />
@@ -414,9 +416,9 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
 
       {searchResults.length === 0 && !isSearching && hasSearch && (
         <Box sx={{ my: 5, textAlign: 'center' }}>
-          <Image src={noDocImage} alt='暂无结果' width={250} />
+          <Image src={noDocImage} alt={t.noResults} width={250} />
           <Typography variant='body2' sx={{ color: 'text.tertiary' }}>
-            暂无相关结果
+            {t.noResults}
           </Typography>
         </Box>
       )}

@@ -65,6 +65,7 @@ func (u *LLMUsecase) BuildConversationMessageWithRAG(
 	groupIDs []int,
 	systemPrompt string,
 	questionOverride string,
+	language string,
 ) ([]*schema.Message, []*domain.RankedNodeChunks, error) {
 	messages := make([]*schema.Message, 0)
 	rankedNodes := make([]*domain.RankedNodeChunks, 0)
@@ -110,6 +111,7 @@ func (u *LLMUsecase) BuildConversationMessageWithRAG(
 					}
 				}
 			}
+			systemPrompt = appendLanguageInstruction(systemPrompt, language)
 
 			template := prompt.FromMessages(schema.GoTemplate,
 				schema.SystemMessage(systemPrompt),
@@ -147,6 +149,30 @@ func (u *LLMUsecase) BuildConversationMessageWithRAG(
 		}
 	}
 	return messages, rankedNodes, nil
+}
+
+func appendLanguageInstruction(systemPrompt, language string) string {
+	systemPrompt = strings.TrimSpace(systemPrompt)
+	if systemPrompt == "" {
+		return systemPrompt
+	}
+
+	switch language {
+	case "en-US":
+		return systemPrompt + `
+
+Please always answer in English.
+Keep the response natural, professional, and easy to read.
+If the source documents are in Chinese, translate the relevant content into English while preserving the original meaning.
+Keep proper nouns, document titles, and business terms accurate.`
+	default:
+		return systemPrompt + `
+
+请始终使用简体中文回答。
+保持回答自然、专业、易读。
+如果源文档是英文，可以翻译成中文后再组织答案，但要保持原意准确。
+专有名词、文档标题和业务术语请尽量准确保留。`
+	}
 }
 
 func (u *LLMUsecase) ChatWithAgent(

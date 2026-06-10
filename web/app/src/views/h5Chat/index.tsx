@@ -14,6 +14,7 @@ import { copyText } from '@/utils';
 import LoadingIcon from '@/assets/images/loading.png';
 import Image from 'next/image';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import Feedback from '@/components/feedback';
 import { ConstsSourceType, V1WechatAppInfoResp } from '@/request/types';
@@ -173,7 +174,13 @@ const SOURCE_TO_API = {
   [ConstsSourceType.SourceTypeWechatBot]: getShareV1AppWechatInfo,
 };
 
-const ChatLoading = ({ onClick }: { onClick: () => void }) => {
+const ChatLoading = ({
+  onClick,
+  stopAnswerText,
+}: {
+  onClick: () => void;
+  stopAnswerText: string;
+}) => {
   return (
     <Stack
       direction='row'
@@ -218,7 +225,7 @@ const ChatLoading = ({ onClick }: { onClick: () => void }) => {
           }}
         />
       </Box>
-      停止回答
+      {stopAnswerText}
     </Stack>
   );
 };
@@ -240,8 +247,9 @@ const H5Chat = () => {
   const [message_id, setMessageId] = useState('');
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
-  const { kbDetail } = useStore();
+  const { kbDetail, language = 'zh-CN' } = useStore();
   const basePath = useBasePath();
+  const t = getQaMessages(language);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -295,7 +303,7 @@ const H5Chat = () => {
     if (content) data.feedback_content = content;
     await postShareV1ChatFeedback(data);
     setScore(score);
-    message.success('反馈成功');
+    message.success(t.feedbackSuccess);
   };
 
   const scrollToTop = () => {
@@ -347,9 +355,12 @@ const H5Chat = () => {
           setLoading(false);
           setAnswer(prev => {
             if (content) {
-              return prev + `\n\n回答出现错误：<error>${content}</error>`;
+              return (
+                prev +
+                `\n\n${t.answerErrorWithContent.replace('{content}', `<error>${content}</error>`)}`
+              );
             }
-            return prev + '\n\n回答出现错误，请重试';
+            return prev + `\n\n${t.answerErrorRetry}`;
           });
           if (content) message.error(content);
         } else if (type === 'done') {
@@ -476,7 +487,9 @@ const H5Chat = () => {
         data={{ message_id: message_id }}
         tags={appSetting?.feedback_type}
       />
-      {loading && <ChatLoading onClick={handleSearchAbort} />}
+      {loading && (
+        <ChatLoading onClick={handleSearchAbort} stopAnswerText={t.stopAnswer} />
+      )}
       <Zoom in={showScrollTop}>
         <Fab
           size='small'

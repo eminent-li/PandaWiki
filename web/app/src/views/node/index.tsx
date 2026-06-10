@@ -5,6 +5,7 @@ import DocSkeleton from '@/components/docSkeleton';
 import ErrorComponent from '@/components/error';
 import ScrollToTopFab from '@/components/scrollToTopFab';
 import { useBasePath } from '@/hooks/useBasePath';
+import { getQaMessages } from '@/locales/qa';
 import { getDocContentSx } from '@/utils/getDocContentSx';
 import useCopy from '@/hooks/useCopy';
 import { useStore } from '@/provider';
@@ -23,7 +24,8 @@ const Doc = ({
   node?: any;
   error?: Partial<Error> & { digest?: string } & { code?: number | string };
 }) => {
-  const { kbDetail, mobile, catalogWidth } = useStore();
+  const { kbDetail, mobile, catalogWidth, language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const [loading, setLoading] = useState(true);
   const [headings, setHeadings] = useState<TocList>([]);
   const [characterCount, setCharacterCount] = useState(0);
@@ -62,7 +64,7 @@ const Doc = ({
     blockContextMenuWhenDisabled: false,
     suffix:
       kbDetail?.settings?.copy_setting === ConstsCopySetting.CopySettingAppend
-        ? `\n\n-----------------------------------------\n内容来自 ${typeof window !== 'undefined' ? window.location.href : ''}`
+        ? `\n\n-----------------------------------------\n${t.contentFromLabel} ${typeof window !== 'undefined' ? window.location.href : ''}`
         : '',
   });
 

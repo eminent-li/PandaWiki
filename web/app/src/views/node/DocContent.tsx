@@ -6,6 +6,7 @@ import CommentInput, {
 } from '@/components/commentInput';
 import { DocWidth } from '@/constant';
 import { useBasePath } from '@/hooks';
+import { getQaMessages } from '@/locales/qa';
 import { getDocContentSx } from '@/utils/getDocContentSx';
 import { useStore } from '@/provider';
 import {
@@ -44,7 +45,8 @@ const DocContent = ({
   commentList?: any[];
   characterCount?: number;
 }) => {
-  const { mobile = false, authInfo, kbDetail, catalogWidth, tree } = useStore();
+  const { mobile = false, authInfo, kbDetail, catalogWidth, tree, language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
   const basePath = useBasePath();
   const params = useParams() || {};
   const [commentLoading, setCommentLoading] = useState(false);
@@ -94,7 +96,7 @@ const DocContent = ({
         const solution = await cap.solve();
         token = solution.token;
       } catch (error) {
-        message.error('验证失败');
+        message.error(t.verifyFailed);
         setCommentLoading(false);
         return;
       }
@@ -116,8 +118,8 @@ const DocContent = ({
         setCommentImages([]);
         message.success(
           appDetail?.web_app_comment_settings?.moderation_enable
-            ? '评论已提交，请耐心等待审核'
-            : '评论成功',
+            ? t.commentSubmittedPending
+            : t.commentSuccess,
         );
       } catch (error: any) {
         console.log(error.message || '评论发布失败');
@@ -139,7 +141,7 @@ const DocContent = ({
     if (
       kbDetail?.settings?.copy_setting === ConstsCopySetting.CopySettingAppend
     ) {
-      context += `\n\n-----------------------------------------\n内容来自 ${typeof window !== 'undefined' ? window.location.href : ''}`;
+      context += `\n\n-----------------------------------------\n${t.contentFromLabel} ${typeof window !== 'undefined' ? window.location.href : ''}`;
     }
     copyText(context);
   };
@@ -184,7 +186,7 @@ const DocContent = ({
           }}
         >
           <Box sx={{ fontWeight: 'bold', mb: 2, lineHeight: '22px' }}>
-            内容摘要
+            {t.summaryTitle}
           </Box>
           <Box>{info?.meta?.summary}</Box>
         </Box>
