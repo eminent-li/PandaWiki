@@ -6,6 +6,7 @@ import Feedback from '@/components/feedback';
 import { IconCopy } from '@/components/icons';
 import MarkDown2 from '@/components/markdown2';
 import { useBasePath, useSmartScroll } from '@/hooks';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { postShareV1ChatFeedback } from '@/request/ShareChat';
 import { getShareV1ConversationDetail } from '@/request/ShareConversation';
@@ -88,17 +89,21 @@ export interface ConversationItem {
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
 
-const AnswerStatus = {
-  1: '正在搜索结果...',
-  2: '思考中...',
-  3: '正在回答',
+const getAnswerStatus = (t: ReturnType<typeof getQaMessages>) => ({
+  1: t.searching,
+  2: t.thinking,
+  3: t.answering,
   4: '',
-};
+});
+
+type AnswerStatusMap = ReturnType<typeof getAnswerStatus>;
 
 const LoadingContent = ({
   thinking,
+  answerStatus,
 }: {
-  thinking: keyof typeof AnswerStatus;
+  thinking: keyof AnswerStatusMap;
+  answerStatus: AnswerStatusMap;
 }) => {
   if (thinking === 4 || thinking === 2) return null;
   return (
@@ -111,7 +116,7 @@ const LoadingContent = ({
           color: alpha(theme.palette.text.primary, 0.5),
         })}
       >
-        {AnswerStatus[thinking]}
+        {answerStatus[thinking]}
       </Typography>
     </Stack>
   );
@@ -122,7 +127,9 @@ const AiQaContent: React.FC<{
   placeholder: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }> = ({ hotSearch, placeholder, inputRef }) => {
-  const { widget } = useStore();
+  const { widget, language = 'zh-CN' } = useStore();
+  const t = getQaMessages(language);
+  const answerStatus = getAnswerStatus(t);
   const sseClientRef = useRef<SSEClient<{
     type: string;
     content: string;
@@ -133,7 +140,7 @@ const AiQaContent: React.FC<{
   const [fullAnswer, setFullAnswer] = useState<string>('');
   const [conversation, setConversation] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [thinking, setThinking] = useState<keyof typeof AnswerStatus>(4);
+  const [thinking, setThinking] = useState<keyof AnswerStatusMap>(4);
   const [nonce, setNonce] = useState('');
   const [conversationId, setConversationId] = useState('');
   const [input, setInput] = useState('');
@@ -799,7 +806,10 @@ const AiQaContent: React.FC<{
                           color: alpha(theme.palette.text.primary, 0.5),
                         })}
                       >
-                        共找到 {item.chunk_result.length} 个结果
+                        {t.resultsFound.replace(
+                          '{count}',
+                          String(item.chunk_result.length),
+                        )}
                       </Typography>
                     </StyledChunkAccordionSummary>
 
@@ -832,7 +842,10 @@ const AiQaContent: React.FC<{
 
                 {/* 加载状态 */}
                 {index === conversation.length - 1 && loading && (
-                  <LoadingContent thinking={thinking} />
+                  <LoadingContent
+                    thinking={thinking}
+                    answerStatus={answerStatus}
+                  />
                 )}
 
                 {/* 思考过程 */}
@@ -933,7 +946,7 @@ const AiQaContent: React.FC<{
                     </Stack>
                     <Box>
                       {widget?.settings?.widget_bot_settings?.disclaimer ||
-                        '本回答由 PandaWiki AI 自动生成，仅供参考。'}
+                        t.answerDisclaimer}
                     </Box>
                   </StyledActionStack>
                 )}
@@ -968,7 +981,7 @@ const AiQaContent: React.FC<{
           onClick={onReset}
         >
           <IconXinduihua sx={{ fontSize: 14 }} />
-          新会话
+          {t.newChat}
         </Button>
       )}
 

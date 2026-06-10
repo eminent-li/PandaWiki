@@ -1448,7 +1448,7 @@ const AiQaContent: React.FC<{
           onClick={onReset}
         >
           <IconXinduihua sx={{ fontSize: 14 }} />
-          新会话
+          {t.newChat}
         </Button>
       )}
 
