@@ -525,6 +525,7 @@ const HomeInlineQaPanel = () => {
                 </Stack>
               </Stack>
             </Stack>
+          </Stack>
           <Stack
             sx={{
               minWidth: 0,
