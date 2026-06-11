@@ -1,6 +1,6 @@
 'use client';
 import { WidgetInfo } from '@/assets/type';
-import { getQaMessages, resolveQaSupportBy } from '@/locales/qa';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import {
   alpha,
@@ -75,7 +75,9 @@ const Widget = () => {
   const aiQaInputRef = useRef<HTMLInputElement>(null);
 
   const placeholder = useMemo(() => {
-    return widget?.settings?.widget_bot_settings?.placeholder || t.searchPlaceholder;
+    return (
+      widget?.settings?.widget_bot_settings?.placeholder || t.searchPlaceholder
+    );
   }, [t.searchPlaceholder, widget]);
 
   const hotSearch = useMemo(() => {
@@ -214,10 +216,8 @@ const Widget = () => {
             }}
           >
             <Box>
-              {resolveQaSupportBy(
-                language,
-                widget?.settings?.widget_bot_settings?.copyright_info,
-              )}
+              {widget?.settings?.widget_bot_settings?.copyright_info ||
+                t.supportBy}
             </Box>
           </Typography>
         </Box>

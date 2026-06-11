@@ -17,7 +17,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AiQaContent from '@/components/QaModal/AiQaContent';
 import SearchDocContent from '@/components/QaModal/SearchDocContent';
-import { getQaMessages, resolveQaSupportBy } from '@/locales/qa';
+import { getQaMessages } from '@/locales/qa';
 
 const StyledTabs = styled(Tabs)(({ theme }) => ({
   minHeight: 'auto',
@@ -575,7 +575,7 @@ const HomeInlineQaPanel = () => {
                   label={
                     <Stack direction='row' gap={0.5} alignItems='center'>
                       <IconZhinengwenda sx={{ fontSize: 16 }} />
-                        {!mobile && <span>{t.smartQa}</span>}
+                      {!mobile && <span>{t.smartQa}</span>}
                     </Stack>
                   }
                   value='chat'
@@ -584,7 +584,7 @@ const HomeInlineQaPanel = () => {
                   label={
                     <Stack direction='row' gap={0.5} alignItems='center'>
                       <IconJinsousuo sx={{ fontSize: 16 }} />
-                        {!mobile && <span>{t.searchDocs}</span>}
+                      {!mobile && <span>{t.searchDocs}</span>}
                     </Stack>
                   }
                   value='search'
@@ -652,10 +652,8 @@ const HomeInlineQaPanel = () => {
                 }}
               >
                 <Typography variant='caption' color='text.disabled'>
-                  {resolveQaSupportBy(
-                    language,
-                    kbDetail?.settings?.conversation_setting?.copyright_info,
-                  )}
+                  {kbDetail?.settings?.conversation_setting?.copyright_info ||
+                    t.supportBy}
                 </Typography>
               </Box>
             )}

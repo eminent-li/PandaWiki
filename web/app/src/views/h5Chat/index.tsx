@@ -14,7 +14,7 @@ import { copyText } from '@/utils';
 import LoadingIcon from '@/assets/images/loading.png';
 import Image from 'next/image';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { getQaMessages, resolveQaAnswerDisclaimer } from '@/locales/qa';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import Feedback from '@/components/feedback';
 import { ConstsSourceType, V1WechatAppInfoResp } from '@/request/types';
@@ -258,12 +258,12 @@ const H5Chat = () => {
   }, [appSetting]);
 
   const disclaimerContent = useMemo(() => {
-    return resolveQaAnswerDisclaimer(
-      language,
+    return (
       appSetting?.disclaimer_content ??
-        kbDetail?.settings?.disclaimer_settings?.content,
+      kbDetail?.settings?.disclaimer_settings?.content ??
+      ''
     );
-  }, [appSetting, kbDetail, language]);
+  }, [appSetting, kbDetail]);
 
   useEffect(() => {
     messagesContainerRef.current?.scrollTo({
@@ -488,7 +488,10 @@ const H5Chat = () => {
         tags={appSetting?.feedback_type}
       />
       {loading && (
-        <ChatLoading onClick={handleSearchAbort} stopAnswerText={t.stopAnswer} />
+        <ChatLoading
+          onClick={handleSearchAbort}
+          stopAnswerText={t.stopAnswer}
+        />
       )}
       <Zoom in={showScrollTop}>
         <Fab

@@ -6,7 +6,7 @@ import Feedback from '@/components/feedback';
 import { IconCopy } from '@/components/icons';
 import MarkDown2 from '@/components/markdown2';
 import { useBasePath, useSmartScroll } from '@/hooks';
-import { getQaMessages, resolveQaAnswerDisclaimer } from '@/locales/qa';
+import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { postShareV1ChatFeedback } from '@/request/ShareChat';
 import { getShareV1ConversationDetail } from '@/request/ShareConversation';
@@ -1019,7 +1019,10 @@ const AiQaContent: React.FC<{
               }}
             >
               <Image
-                src={getImagePath(kbDetail?.settings?.icon || Logo.src, basePath)}
+                src={getImagePath(
+                  kbDetail?.settings?.icon || Logo.src,
+                  basePath,
+                )}
                 alt='logo'
                 width={46}
                 height={46}
@@ -1043,7 +1046,12 @@ const AiQaContent: React.FC<{
 
             {/* 热门搜索区域 */}
             {hotSearch.length > 0 && (
-              <Box sx={{ width: '100%', maxWidth: isWorkspaceLayout ? 1120 : '100%' }}>
+              <Box
+                sx={{
+                  width: '100%',
+                  maxWidth: isWorkspaceLayout ? 1120 : '100%',
+                }}
+              >
                 <Box
                   sx={{
                     display: 'flex',
@@ -1115,10 +1123,7 @@ const AiQaContent: React.FC<{
                                   fontSize: 14,
                                   color: 'text.primary',
                                   backgroundColor: theme =>
-                                    alpha(
-                                      theme.palette.background.paper,
-                                      0.38,
-                                    ),
+                                    alpha(theme.palette.background.paper, 0.38),
                                   '&:hover': {
                                     color: 'primary.main',
                                     backgroundColor: theme =>
@@ -1166,10 +1171,7 @@ const AiQaContent: React.FC<{
                                   fontSize: 14,
                                   color: 'text.primary',
                                   backgroundColor: theme =>
-                                    alpha(
-                                      theme.palette.background.paper,
-                                      0.38,
-                                    ),
+                                    alpha(theme.palette.background.paper, 0.38),
                                   '&:hover': {
                                     color: 'primary.main',
                                     backgroundColor: theme =>
@@ -1412,10 +1414,7 @@ const AiQaContent: React.FC<{
                       )}
                     </Stack>
                     <Box>
-                      {resolveQaAnswerDisclaimer(
-                        language,
-                        kbDetail?.settings?.disclaimer_settings?.content,
-                      )}
+                      {kbDetail?.settings?.disclaimer_settings?.content}
                     </Box>
                   </StyledActionStack>
                 )}

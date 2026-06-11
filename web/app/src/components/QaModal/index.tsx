@@ -17,7 +17,7 @@ import {
 import AiQaContent from './AiQaContent';
 import SearchDocContent from './SearchDocContent';
 import { useStore } from '@/provider';
-import { getQaMessages, resolveQaSupportBy } from '@/locales/qa';
+import { getQaMessages } from '@/locales/qa';
 
 interface SearchSuggestion {
   id: string;
@@ -297,10 +297,8 @@ const QaModal: React.FC<QaModalProps> = () => {
             <Box>
               {!kbDetail?.settings?.conversation_setting
                 ?.copyright_hide_enabled &&
-                resolveQaSupportBy(
-                  language,
-                  kbDetail?.settings?.conversation_setting?.copyright_info,
-                )}
+                (kbDetail?.settings?.conversation_setting?.copyright_info ||
+                  t.supportBy)}
             </Box>
           </Typography>
         </Box>

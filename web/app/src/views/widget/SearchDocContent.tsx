@@ -2,7 +2,6 @@
 import Logo from '@/assets/images/logo.png';
 import noDocImage from '@/assets/images/no-doc.png';
 import { useBasePath } from '@/hooks';
-import { getQaMessages } from '@/locales/qa';
 import { useStore } from '@/provider';
 import { postShareV1ChatWidgetSearch } from '@/request';
 import { DomainNodeContentChunkSSE } from '@/request/types';
@@ -81,8 +80,7 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
   inputRef,
   placeholder,
 }) => {
-  const { kbDetail, language = 'zh-CN' } = useStore();
-  const t = getQaMessages(language);
+  const { kbDetail } = useStore();
   const basePath = useBasePath();
   // 模糊搜索相关状态
   const [fuzzySuggestions, setFuzzySuggestions] = useState<string[]>([]);
@@ -342,7 +340,7 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
               fontSize: 14,
             }}
           >
-            {t.resultsFound.replace('{count}', String(searchResults.length))}
+            共找到 {searchResults.length} 个结果
           </Typography>
 
           {/* 搜索结果列表 */}
@@ -404,7 +402,7 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {result.summary || t.noSummary}
+                    {result.summary || '暂无摘要'}
                   </Typography>
                 </Stack>
                 <IconMianbaoxie sx={{ fontSize: 12 }} />
@@ -416,9 +414,9 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
 
       {searchResults.length === 0 && !isSearching && hasSearch && (
         <Box sx={{ my: 5, textAlign: 'center' }}>
-          <Image src={noDocImage} alt={t.noResults} width={250} />
+          <Image src={noDocImage} alt='暂无结果' width={250} />
           <Typography variant='body2' sx={{ color: 'text.tertiary' }}>
-            {t.noResults}
+            暂无相关结果
           </Typography>
         </Box>
       )}
