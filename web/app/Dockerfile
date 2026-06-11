@@ -21,4 +21,4 @@ EXPOSE 3010
 ENV PORT=3010
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "app/server.js"]
+CMD ["node", "server.js"]
