@@ -18,6 +18,7 @@
 /.next/
 /out/
 /dist/
+/app/
 
 # production
 /build
