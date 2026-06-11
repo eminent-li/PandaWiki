@@ -1,12 +1,13 @@
 import { execFileSync } from 'node:child_process';
+import { copyFileSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { rmSync } from 'node:fs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const appDir = dirname(scriptDir);
 const webDir = dirname(appDir);
 const outputDir = join(appDir, 'dist', 'runtime-deploy');
+const envFile = join(appDir, '.env');
 const deployArgs = [
   'deploy',
   '--legacy',
@@ -25,3 +26,7 @@ execFileSync(spawnCommand, spawnArgs, {
   cwd: webDir,
   stdio: 'inherit',
 });
+
+if (existsSync(envFile)) {
+  copyFileSync(envFile, join(outputDir, '.env'));
+}
