@@ -13,6 +13,15 @@ declare module '@cap.js/widget' {
   export default Cap;
 }
 
+declare module 'react-syntax-highlighter' {
+  const SyntaxHighlighter: any;
+  export default SyntaxHighlighter;
+}
+
+declare module 'react-syntax-highlighter/dist/esm/styles/hljs' {
+  export const anOldHope: any;
+}
+
 declare global {
   interface Window {
     _BASE_PATH_?: string;

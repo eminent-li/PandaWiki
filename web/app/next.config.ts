@@ -5,7 +5,6 @@ const nextConfig: NextConfig = {
   distDir: 'dist',
   reactStrictMode: false,
   allowedDevOrigins: ['10.10.18.71'],
-  output: 'standalone',
   assetPrefix: '/panda-wiki-app-assets',
   logging: {
     fetches: {
