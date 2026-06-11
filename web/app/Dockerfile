@@ -23,4 +23,4 @@ EXPOSE 3010
 ENV PORT=3010
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["sh", "-c", "if [ -f app/server.js ]; then exec node app/server.js; elif [ -f server.js ]; then exec node server.js; elif [ -f app/package.json ]; then exec node ./node_modules/.pnpm/next@*/node_modules/next/dist/bin/next start app -p ${PORT:-3010} -H ${HOSTNAME:-0.0.0.0}; else echo 'Unable to find Next.js entrypoint under /app'; find . -maxdepth 3 -type f | sort | sed -n '1,200p'; exit 1; fi"]
+CMD ["sh", "-c", "if [ -f server.js ]; then exec node server.js; elif [ -f app/server.js ]; then exec node app/server.js; else echo 'Unable to find Next.js entrypoint under /app'; find . -maxdepth 3 -type f | sort | sed -n '1,200p'; exit 1; fi"]
