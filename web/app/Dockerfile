@@ -7,9 +7,9 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# 安装运行时依赖，使用完整 dist 产物通过 next start 启动
+# 复用构建机上已有的运行时依赖，避免镜像构建阶段再次联网拉包
 COPY --chown=nextjs:nodejs package.json ./package.json
-RUN npm install --omit=dev --ignore-scripts
+COPY --chown=nextjs:nodejs node_modules ./node_modules
 
 # 复制运行所需的构建产物和静态资源
 COPY --chown=nextjs:nodejs public ./public
