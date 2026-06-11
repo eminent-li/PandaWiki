@@ -18,9 +18,12 @@ COPY --chown=nextjs:nodejs dist/standalone ./
 COPY --chown=nextjs:nodejs dist/static ./dist/static
 COPY --chown=nextjs:nodejs dist/static ./app/dist/static
 
+COPY --chown=nextjs:nodejs docker-entrypoint.sh /usr/local/bin/start-frontend.sh
+RUN chmod +x /usr/local/bin/start-frontend.sh
+
 USER nextjs
 EXPOSE 3010
 ENV PORT=3010
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["sh", "-c", "if [ -f server.js ]; then exec node server.js; elif [ -f app/server.js ]; then exec node app/server.js; else echo 'Unable to find Next.js entrypoint under /app'; find . -maxdepth 3 -type f | sort | sed -n '1,200p'; exit 1; fi"]
+CMD ["/usr/local/bin/start-frontend.sh"]
