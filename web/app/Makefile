@@ -10,11 +10,11 @@ build:
 # 构建并加载到本地Docker
 image: build
 	docker buildx build \
-	  -f Dockerfile \
+	  -f app/Dockerfile \
 	  --platform ${PLATFORM} \
 	  --tag ${REGISTRY}/frontend:${TAG} \
 	  --load \
-	  .
+	  ..
 
 save: image
 	docker save -o /tmp/panda-wiki-app_frontend.tar panda-wiki-app/frontend:main
