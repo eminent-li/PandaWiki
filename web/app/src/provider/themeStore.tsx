@@ -2,7 +2,7 @@
 import { darkTheme, lightTheme } from '@/theme';
 import { ThemeProvider } from '@ctzhian/ui';
 import { createTheme } from '@mui/material';
-// @ts-expect-error bundler resolution misses the ambient types for this package.
+// @ts-ignore bundler resolution differs between local and deploy environments.
 import Cookies from 'js-cookie';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 

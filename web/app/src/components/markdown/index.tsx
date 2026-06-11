@@ -4,9 +4,9 @@ import { Box, Dialog, IconButton, useTheme } from '@mui/material';
 import 'katex/dist/katex.min.css';
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-// @ts-expect-error bundler resolution misses the ambient types for this package.
+// @ts-ignore bundler resolution differs between local and deploy environments.
 import SyntaxHighlighter from 'react-syntax-highlighter';
-// @ts-expect-error bundler resolution misses the ambient types for this package.
+// @ts-ignore bundler resolution differs between local and deploy environments.
 import { anOldHope } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
