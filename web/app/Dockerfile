@@ -7,18 +7,17 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# 复制 public 目录
-COPY --chown=nextjs:nodejs public ./app/public
+# 安装运行时依赖，使用完整 dist 产物通过 next start 启动
+COPY --chown=nextjs:nodejs package.json ./package.json
+RUN npm install --omit=dev --ignore-scripts
 
-# 复制 standalone 构建输出到工作目录（包含可能的额外 app 子目录）
-COPY --chown=nextjs:nodejs dist/standalone ./
-
-# 复制静态资源到可能的两种相对路径位置
-COPY --chown=nextjs:nodejs dist/static ./app/dist/static
+# 复制运行所需的构建产物和静态资源
+COPY --chown=nextjs:nodejs public ./public
+COPY --chown=nextjs:nodejs dist ./dist
 
 USER nextjs
 EXPOSE 3010
 ENV PORT=3010
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3010", "-H", "0.0.0.0"]
