@@ -575,7 +575,7 @@ const HomeInlineQaPanel = () => {
                   label={
                     <Stack direction='row' gap={0.5} alignItems='center'>
                       <IconZhinengwenda sx={{ fontSize: 16 }} />
-                      {!mobile && <span>{t.smartQa}</span>}
+                        {!mobile && <span>{t.smartQa}</span>}
                     </Stack>
                   }
                   value='chat'
@@ -584,7 +584,7 @@ const HomeInlineQaPanel = () => {
                   label={
                     <Stack direction='row' gap={0.5} alignItems='center'>
                       <IconJinsousuo sx={{ fontSize: 16 }} />
-                      {!mobile && <span>{t.searchDocs}</span>}
+                        {!mobile && <span>{t.searchDocs}</span>}
                     </Stack>
                   }
                   value='search'

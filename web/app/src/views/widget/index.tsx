@@ -75,9 +75,7 @@ const Widget = () => {
   const aiQaInputRef = useRef<HTMLInputElement>(null);
 
   const placeholder = useMemo(() => {
-    return (
-      widget?.settings?.widget_bot_settings?.placeholder || t.searchPlaceholder
-    );
+    return widget?.settings?.widget_bot_settings?.placeholder || t.searchPlaceholder;
   }, [t.searchPlaceholder, widget]);
 
   const hotSearch = useMemo(() => {

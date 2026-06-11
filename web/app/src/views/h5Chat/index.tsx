@@ -488,10 +488,7 @@ const H5Chat = () => {
         tags={appSetting?.feedback_type}
       />
       {loading && (
-        <ChatLoading
-          onClick={handleSearchAbort}
-          stopAnswerText={t.stopAnswer}
-        />
+        <ChatLoading onClick={handleSearchAbort} stopAnswerText={t.stopAnswer} />
       )}
       <Zoom in={showScrollTop}>
         <Fab
