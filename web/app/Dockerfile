@@ -7,13 +7,12 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# 复制 public 目录
+COPY --chown=nextjs:nodejs public ./public
 COPY --chown=nextjs:nodejs public ./app/public
 
-# 复制 standalone 构建输出到工作目录（包含可能的额外 app 子目录）
 COPY --chown=nextjs:nodejs dist/standalone ./
 
-# 复制静态资源到可能的两种相对路径位置
+COPY --chown=nextjs:nodejs dist/static ./dist/static
 COPY --chown=nextjs:nodejs dist/static ./app/dist/static
 
 USER nextjs
@@ -21,4 +20,4 @@ EXPOSE 3010
 ENV PORT=3010
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "app/server.js"]
+CMD ["sh", "-c", "if [ -f /app/app/server.js ]; then exec node /app/app/server.js; elif [ -f /app/server.js ]; then exec node /app/server.js; else find /app -maxdepth 5 -name server.js -print; exit 1; fi"]
